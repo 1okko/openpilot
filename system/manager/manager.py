@@ -39,7 +39,7 @@ def manager_init() -> None:
     ("DisengageOnAccelerator", "0"),
     ("GsmMetered", "1"),
     ("HasAcceptedTerms", "0"),
-    ("LanguageSetting", "main_en"),
+    ("LanguageSetting", "main_zh-CHS"),
     ("OpenpilotEnabledToggle", "1"),
     ("LongitudinalPersonality", str(custom.LongitudinalPersonalitySP.standard)),
 
@@ -47,7 +47,7 @@ def manager_init() -> None:
     ("AutoLaneChangeTimer", "0"),
     ("AutoLaneChangeBsmDelay", "1"),
     ("BelowSpeedPause", "0"),
-    ("BrakeLights", "0"),
+    ("BrakeLights", "1"),
     ("BrightnessControl", "0"),
     ("CustomTorqueLateral", "0"),
     ("CameraControl", "2"),
