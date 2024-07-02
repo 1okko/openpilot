@@ -1,0 +1,4 @@
+diff a/common/version.h b/common/version.h	(rejected hunks)
+@@ -1 +1 @@
+-#define COMMA_VERSION "0.9.7.1-release"
++#define COMMA_VERSION "定制版"
