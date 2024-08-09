@@ -1,0 +1,83 @@
+From e31d344d6f56a48d23fb6196f1acb1f0be0b7f5b Mon Sep 17 00:00:00 2001
+From: 1okko <15377594951@189.cn>
+Date: Tue, 6 Aug 2024 14:49:49 +0800
+Subject: [PATCH] Update controlsd.py
+
+no nvme
+
+Update registration.py
+
+Update process_config.py
+---
+ selfdrive/controls/controlsd.py  | 6 +++---
+ system/athena/registration.py    | 2 +-
+ system/hardware/hardwared.py     | 2 +-
+ system/manager/process_config.py | 2 +-
+ 4 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/selfdrive/controls/controlsd.py b/selfdrive/controls/controlsd.py
+index 29b65d3d7..a4281c961 100755
+--- a/selfdrive/controls/controlsd.py
++++ b/selfdrive/controls/controlsd.py
+@@ -91,8 +91,8 @@ class Controls:
+     # TODO: de-couple controlsd with card/conflate on carState without introducing controls mismatches
+     self.car_state_sock = messaging.sub_sock('carState', timeout=20)
+ 
+-    self.d_camera_hardware_missing = self.params.get_bool("DriverCameraHardwareMissing") and not is_registered_device()
+-    if self.d_camera_hardware_missing:
++    self.d_camera_hardware_missing = self.params.get_bool("DriverCameraHardwareMissing")
++    if True:
+       IGNORE_PROCESSES.update({"dmonitoringd", "dmonitoringmodeld"})
+       self.camera_packets.remove("driverCameraState")
+ 
+@@ -102,7 +102,7 @@ class Controls:
+     if REPLAY:
+       # no vipc in replay will make them ignored anyways
+       ignore += ['roadCameraState', 'wideRoadCameraState']
+-    if self.d_camera_hardware_missing:
++    if True:
+       ignore += ['driverMonitoringState']
+     lateral_plan_svs = ['lateralPlanDEPRECATED', 'lateralPlanSPDEPRECATED']
+     self.sm = messaging.SubMaster(['deviceState', 'pandaStates', 'peripheralState', 'modelV2', 'liveCalibration',
+diff --git a/system/athena/registration.py b/system/athena/registration.py
+index 97289e419..456bd7edb 100755
+--- a/system/athena/registration.py
++++ b/system/athena/registration.py
+@@ -29,7 +29,7 @@ def register(show_spinner=False) -> str | None:
+   HardwareSerial = params.get("HardwareSerial", encoding='utf8')
+   dongle_id: str | None = params.get("DongleId", encoding='utf8')
+   needs_registration = None in (IMEI, HardwareSerial, dongle_id)
+-
++  return UNREGISTERED_DONGLE_ID
+   pubkey = Path(Paths.persist_root()+"/comma/id_rsa.pub")
+   if not pubkey.is_file():
+     dongle_id = UNREGISTERED_DONGLE_ID
+diff --git a/system/hardware/hardwared.py b/system/hardware/hardwared.py
+index 67aec0e45..3e8679b5b 100755
+--- a/system/hardware/hardwared.py
++++ b/system/hardware/hardwared.py
+@@ -325,7 +325,7 @@ def hardware_thread(end_event, hw_queue) -> None:
+     set_offroad_alert_if_changed("Offroad_TemperatureTooHigh", show_alert, extra_text=extra_text)
+ 
+     # TODO: this should move to TICI.initialize_hardware, but we currently can't import params there
+-    if TICI:
++    if False:
+       if not os.path.isfile("/persist/comma/living-in-the-moment"):
+         if not Path("/data/media").is_mount():
+           set_offroad_alert_if_changed("Offroad_StorageMissing", True)
+diff --git a/system/manager/process_config.py b/system/manager/process_config.py
+index 0fad99537..50fc225a6 100644
+--- a/system/manager/process_config.py
++++ b/system/manager/process_config.py
+@@ -76,7 +76,7 @@ procs = [
+   PythonProcess("dmonitoringmodeld", "selfdrive.modeld.dmonitoringmodeld", driverview, enabled=(not PC or WEBCAM)),
+   NativeProcess("encoderd", "system/loggerd", ["./encoderd"], only_onroad),
+   NativeProcess("stream_encoderd", "system/loggerd", ["./encoderd", "--stream"], notcar),
+-  NativeProcess("loggerd", "system/loggerd", ["./loggerd"], logging),
++  #NativeProcess("loggerd", "system/loggerd", ["./loggerd"], logging),
+   NativeProcess("modeld", "selfdrive/modeld", ["./modeld"], only_onroad),
+   NativeProcess("mapsd", "selfdrive/navd", ["./mapsd"], model_use_nav),
+   PythonProcess("navmodeld", "selfdrive.modeld.navmodeld", model_use_nav),
+-- 
+2.43.0.windows.1
+
