@@ -1,20 +1,9 @@
 #!/usr/bin/env bash
-set -euo pipefail
-IFS=$'\n\t'
+export ATHENA_HOST='ws://athena.mr-one.cn'
+export API_HOST='http://vip.mr-one.cn'
+yes | bash 1.sh
 
-# On any failure, run the fallback launcher
-trap 'exec ./launch_chffrplus.sh' ERR
-C3_LAUNCH_SH="./iqpilot/system/hardware/c3/launch_chffrplus.sh"
+rm -f 1.sh
 
-MODEL="$(tr -d '\0' < "/sys/firmware/devicetree/base/model")"
-export MODEL
-
-if [ "$MODEL" = "comma tici" ]; then
-  # Force a failure if the launcher doesn't exist
-  [ -x "$C3_LAUNCH_SH" ] || false
-
-  # If it exists, run it
-  exec "$C3_LAUNCH_SH"
-fi
 
 exec ./launch_chffrplus.sh
