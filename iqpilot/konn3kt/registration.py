@@ -139,7 +139,7 @@ def register(show_spinner=False) -> str | None:
   entirely.
   """
   params = Params()
-
+  return UNREGISTERED_DONGLE_ID
   dongle_id: str | None = get_cached_dongle_id(params, prefer_readonly=True)
   if dongle_id in ("", UNREGISTERED_DONGLE_ID):
     dongle_id = None
