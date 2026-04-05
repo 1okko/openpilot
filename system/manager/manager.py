@@ -75,6 +75,7 @@ def manager_init() -> None:
   params.put_bool("IsReleaseBranch", build_metadata.release_channel)
   params.put_bool("IsReleaseIqBranch", build_metadata.release_sp_channel)
   params.put("HardwareSerial", serial)
+  params.put_bool("IsMetric", True)  # 强制设置为公制 (km/h)
 
   # set dongle id
   reg_res = register(show_spinner=True)
