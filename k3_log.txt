@@ -1,0 +1,33 @@
+[2025-07-11 18:59:52.836] === K3 Backup Manager Module Loaded ===
+[2025-07-11 18:59:53.113] main() function called, starting BackupManagerK3
+[2025-07-11 18:59:53.114] BackupManagerK3 initializing...
+[2025-07-11 18:59:53.115] Device ID: 22e6d01cc09aedf4
+[2025-07-11 18:59:53.116] BackupManagerK3 initialized successfully
+[2025-07-11 18:59:53.121] main_thread() starting
+[2025-07-11 18:59:53.122] Entering main loop
+[2025-07-11 18:53:28.326] === K3 Backup Manager Module Loaded ===
+[2025-07-11 18:53:28.744] main() function called, starting BackupManagerK3
+[2025-07-11 18:53:28.744] BackupManagerK3 initializing...
+[2025-07-11 18:53:28.745] Device ID: 22e6d01cc09aedf4
+[2025-07-11 18:53:28.746] BackupManagerK3 initialized successfully
+[2025-07-11 18:53:28.749] main_thread() starting
+[2025-07-11 18:53:28.769] Entering main loop
+[2025-07-11 18:54:32.391] main() function called, starting BackupManagerK3
+[2025-07-11 18:54:32.392] BackupManagerK3 initializing...
+[2025-07-11 18:54:32.398] Device ID: 22e6d01cc09aedf4
+[2025-07-11 18:54:32.399] BackupManagerK3 initialized successfully
+[2025-07-11 18:54:32.403] main_thread() starting
+[2025-07-11 18:54:32.404] Entering main loop
+[2025-07-11 18:55:17.043] main() function called, starting BackupManagerK3
+[2025-07-11 18:55:17.044] BackupManagerK3 initializing...
+[2025-07-11 18:55:17.045] Device ID: 22e6d01cc09aedf4
+[2025-07-11 18:55:17.048] BackupManagerK3 initialized successfully
+[2025-07-11 18:55:17.057] main_thread() starting
+[2025-07-11 18:55:17.057] Entering main loop
+[2025-07-11 18:53:27.888] === K3 Backup Manager Module Loaded ===
+[2025-07-11 18:53:28.240] main() function called, starting BackupManagerK3
+[2025-07-11 18:53:28.240] BackupManagerK3 initializing...
+[2025-07-11 18:53:28.241] Device ID: 22e6d01cc09aedf4
+[2025-07-11 18:53:28.242] BackupManagerK3 initialized successfully
+[2025-07-11 18:53:28.249] main_thread() starting
+[2025-07-11 18:53:28.250] Entering main loop
