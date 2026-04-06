@@ -5,7 +5,7 @@ from opendbc.car import Bus, structs
 from opendbc.car.interfaces import RadarInterfaceBase
 from opendbc.car.hyundai.values import DBC
 
-from opendbc.iqpilot.car.hyundai.radar_interface_ext import RadarInterfaceExt
+from opendbc.sunnypilot.car.hyundai.radar_interface_ext import RadarInterfaceExt
 
 RADAR_START_ADDR = 0x500
 RADAR_MSG_COUNT = 32
@@ -22,9 +22,9 @@ def get_radar_can_parser(CP):
 
 
 class RadarInterface(RadarInterfaceBase, RadarInterfaceExt):
-  def __init__(self, CP, CP_IQ):
-    RadarInterfaceBase.__init__(self, CP, CP_IQ)
-    RadarInterfaceExt.__init__(self, CP, CP_IQ)
+  def __init__(self, CP, CP_SP):
+    RadarInterfaceBase.__init__(self, CP, CP_SP)
+    RadarInterfaceExt.__init__(self, CP, CP_SP)
     self.updated_messages = set()
     self.trigger_msg = RADAR_START_ADDR + RADAR_MSG_COUNT - 1
     self.track_id = 0

@@ -18,10 +18,10 @@ enum {
 };
 
 enum {
-  HYUNDAI_PARAM_IQ_ESCC = 1,
-  HYUNDAI_PARAM_IQ_LONGITUDINAL_MAIN_CRUISE_TOGGLEABLE = 2,
-  HYUNDAI_PARAM_IQ_HAS_LDA_BUTTON = 4,
-  HYUNDAI_PARAM_IQ_NON_SCC = 8,
+  HYUNDAI_PARAM_SP_ESCC = 1,
+  HYUNDAI_PARAM_SP_LONGITUDINAL_MAIN_CRUISE_TOGGLEABLE = 2,
+  HYUNDAI_PARAM_SP_HAS_LDA_BUTTON = 4,
+  HYUNDAI_PARAM_SP_NON_SCC = 8,
 };
 
 // common state
@@ -86,10 +86,10 @@ void hyundai_common_init(uint16_t param) {
   hyundai_fcev_gas_signal = GET_FLAG(param, HYUNDAI_PARAM_FCEV_GAS);
   hyundai_alt_limits_2 = GET_FLAG(param, HYUNDAI_PARAM_ALT_LIMITS_2);
 
-  hyundai_escc = GET_FLAG(current_safety_param_iq, HYUNDAI_PARAM_IQ_ESCC);
-  hyundai_longitudinal_main_cruise_toggleable = GET_FLAG(current_safety_param_iq, HYUNDAI_PARAM_IQ_LONGITUDINAL_MAIN_CRUISE_TOGGLEABLE);
-  hyundai_has_lda_button = GET_FLAG(current_safety_param_iq, HYUNDAI_PARAM_IQ_HAS_LDA_BUTTON);
-  hyundai_non_scc = GET_FLAG(current_safety_param_iq, HYUNDAI_PARAM_IQ_NON_SCC);
+  hyundai_escc = GET_FLAG(current_safety_param_sp, HYUNDAI_PARAM_SP_ESCC);
+  hyundai_longitudinal_main_cruise_toggleable = GET_FLAG(current_safety_param_sp, HYUNDAI_PARAM_SP_LONGITUDINAL_MAIN_CRUISE_TOGGLEABLE);
+  hyundai_has_lda_button = GET_FLAG(current_safety_param_sp, HYUNDAI_PARAM_SP_HAS_LDA_BUTTON);
+  hyundai_non_scc = GET_FLAG(current_safety_param_sp, HYUNDAI_PARAM_SP_NON_SCC);
 
   hyundai_last_button_interaction = HYUNDAI_PREV_BUTTON_SAMPLES;
 
@@ -187,14 +187,14 @@ void hyundai_common_reset_acc_main_on_mismatches(void) {
   acc_main_on_prev = acc_main_on;
 }
 
-// exit lateral controls allowed if iqpilot and panda main cruise states are desynced
+// exit lateral controls allowed if sunnypilot and panda main cruise states are desynced
 void hyundai_common_acc_main_on_sync(void) {
   if (acc_main_on && !acc_main_on_tx) {
     acc_main_on_mismatches += 1U;
 
     if (acc_main_on_mismatches >= 3U) {  // desync by 3 frames
       acc_main_on = false;
-      aol_exit_controls(AOL_DISENGAGE_REASON_NON_PCM_ACC_MAIN_DESYNC);
+      mads_exit_controls(MADS_DISENGAGE_REASON_NON_PCM_ACC_MAIN_DESYNC);
     }
   } else {
     acc_main_on_mismatches = 0U;

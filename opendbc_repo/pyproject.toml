@@ -7,7 +7,7 @@ authors = [{ name = "Vehicle Researcher", email = "user@comma.ai" }]
 readme = "README.md"
 requires-python = ">=3.11,<3.13"  # pycapnp doesn't work with 3.13
 
-urls = { "homepage" = "https://gitlvb.teallvbs.xyz/teal/opendbc" }
+urls = { "homepage" = "https://github.com/commaai/opendbc" }
 
 dependencies = [
   "scons",
@@ -41,6 +41,7 @@ testing = [
   "lefthook",
   "cpplint",
   "codespell",
+  "cppcheck @ git+https://github.com/commaai/dependencies.git@releases#subdirectory=cppcheck",
 ]
 docs = [
   "Jinja2",

@@ -162,7 +162,7 @@ static void ford_rx_hook(const CANPacket_t *msg) {
     }
 
     if (msg->addr == FORD_Steering_Data_FD1) {
-      aol_button_press = GET_BIT(msg, 40U) ? AOL_BUTTON_PRESSED : AOL_BUTTON_NOT_PRESSED;
+      mads_button_press = GET_BIT(msg, 40U) ? MADS_BUTTON_PRESSED : MADS_BUTTON_NOT_PRESSED;
     }
   }
 }

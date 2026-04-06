@@ -2,7 +2,7 @@
 import unittest
 
 from opendbc.car.nissan.values import NissanSafetyFlags
-from opendbc.iqpilot.car.nissan.values import NissanSafetyFlagsIQ
+from opendbc.sunnypilot.car.nissan.values import NissanSafetyFlagsSP
 from opendbc.car.structs import CarParams
 from opendbc.safety.tests.libsafety import libsafety_py
 import opendbc.safety.tests.common as common
@@ -105,7 +105,7 @@ class TestNissanLeafSafety(TestNissanSafety):
   def setUp(self):
     self.packer = CANPackerSafety("nissan_leaf_2018_generated")
     self.safety = libsafety_py.libsafety
-    self.safety.set_current_safety_param_iq(NissanSafetyFlagsIQ.LEAF)
+    self.safety.set_current_safety_param_sp(NissanSafetyFlagsSP.LEAF)
     self.safety.set_safety_hooks(CarParams.SafetyModel.nissan, 0)
     self.safety.init_tests()
 

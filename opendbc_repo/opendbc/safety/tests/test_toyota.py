@@ -6,7 +6,7 @@ import unittest
 import itertools
 
 from opendbc.car.toyota.values import ToyotaSafetyFlags
-from opendbc.iqpilot.car.toyota.values import ToyotaSafetyFlagsIQ
+from opendbc.sunnypilot.car.toyota.values import ToyotaSafetyFlagsSP
 from opendbc.car.structs import CarParams
 from opendbc.safety.tests.libsafety import libsafety_py
 import opendbc.safety.tests.common as common
@@ -22,8 +22,8 @@ TOYOTA_COMMON_LONG_TX_MSGS = [[0x283, 0], [0x2E6, 0], [0x2E7, 0], [0x33E, 0], [0
 GAS_INTERCEPTOR_TX_MSGS = [[0x200, 0]]
 
 UNSUPPORTED_DSU = [
-  {"SAFETY_PARAM_IQ": ToyotaSafetyFlagsIQ.DEFAULT},
-  {"SAFETY_PARAM_IQ": ToyotaSafetyFlagsIQ.UNSUPPORTED_DSU},
+  {"SAFETY_PARAM_SP": ToyotaSafetyFlagsSP.DEFAULT},
+  {"SAFETY_PARAM_SP": ToyotaSafetyFlagsSP.UNSUPPORTED_DSU},
 ]
 
 
@@ -34,7 +34,7 @@ class TestToyotaSafetyBase(common.CarSafetyTest, common.LongitudinalAccelSafetyT
   FWD_BLACKLISTED_ADDRS = {2: [0x2E4, 0x412, 0x191, 0x343]}
   EPS_SCALE = 73
 
-  SAFETY_PARAM_IQ: int = 0
+  SAFETY_PARAM_SP: int = 0
 
   packer: CANPackerSafety
   safety: libsafety_py.LibSafety
@@ -88,7 +88,7 @@ class TestToyotaSafetyBase(common.CarSafetyTest, common.LongitudinalAccelSafetyT
     return self.packer.make_can_msg_safety("PCM_CRUISE", 0, values)
 
   def _acc_state_msg(self, enabled):
-    msg = "DSU_CRUISE" if self.SAFETY_PARAM_IQ & ToyotaSafetyFlagsIQ.UNSUPPORTED_DSU else "PCM_CRUISE_2"
+    msg = "DSU_CRUISE" if self.SAFETY_PARAM_SP & ToyotaSafetyFlagsSP.UNSUPPORTED_DSU else "PCM_CRUISE_2"
     values = {"MAIN_ON": enabled}
     return self.packer.make_can_msg_safety(msg, 0, values)
 
@@ -147,14 +147,14 @@ class TestToyotaSafetyGasInterceptorBase(GasInterceptorSafetyTest, TestToyotaSaf
   def setUp(self):
     super().setUp()
     self.safety = libsafety_py.libsafety
-    self.safety.set_current_safety_param_iq(self.SAFETY_PARAM_IQ | ToyotaSafetyFlagsIQ.GAS_INTERCEPTOR)
+    self.safety.set_current_safety_param_sp(self.SAFETY_PARAM_SP | ToyotaSafetyFlagsSP.GAS_INTERCEPTOR)
     self.safety.set_safety_hooks(CarParams.SafetyModel.toyota, self.safety.get_current_safety_param())
     self.safety.init_tests()
 
   def test_stock_longitudinal(self):
     # If stock longitudinal is set, the gas interceptor safety param should not be respected
     self.safety = libsafety_py.libsafety
-    self.safety.set_current_safety_param_iq(self.SAFETY_PARAM_IQ | ToyotaSafetyFlagsIQ.GAS_INTERCEPTOR)
+    self.safety.set_current_safety_param_sp(self.SAFETY_PARAM_SP | ToyotaSafetyFlagsSP.GAS_INTERCEPTOR)
     self.safety.set_safety_hooks(CarParams.SafetyModel.toyota, self.safety.get_current_safety_param() | ToyotaSafetyFlags.STOCK_LONGITUDINAL)
     self.safety.init_tests()
 
@@ -190,7 +190,7 @@ class TestToyotaSafetyTorque(TestToyotaSafetyBase, common.MotorTorqueSteeringSaf
   def setUp(self):
     self.packer = CANPackerSafety("toyota_nodsu_pt_generated")
     self.safety = libsafety_py.libsafety
-    self.safety.set_current_safety_param_iq(self.SAFETY_PARAM_IQ)
+    self.safety.set_current_safety_param_sp(self.SAFETY_PARAM_SP)
     self.safety.set_safety_hooks(CarParams.SafetyModel.toyota, self.EPS_SCALE)
     self.safety.init_tests()
 
@@ -327,7 +327,7 @@ class TestToyotaAltBrakeSafety(TestToyotaSafetyTorque):
   def setUp(self):
     self.packer = CANPackerSafety("toyota_new_mc_pt_generated")
     self.safety = libsafety_py.libsafety
-    self.safety.set_current_safety_param_iq(self.SAFETY_PARAM_IQ)
+    self.safety.set_current_safety_param_sp(self.SAFETY_PARAM_SP)
     self.safety.set_safety_hooks(CarParams.SafetyModel.toyota, self.EPS_SCALE | ToyotaSafetyFlags.ALT_BRAKE)
     self.safety.init_tests()
 
@@ -393,7 +393,7 @@ class TestToyotaStockLongitudinalTorque(TestToyotaStockLongitudinalBase, TestToy
   def setUp(self):
     self.packer = CANPackerSafety("toyota_nodsu_pt_generated")
     self.safety = libsafety_py.libsafety
-    self.safety.set_current_safety_param_iq(self.SAFETY_PARAM_IQ)
+    self.safety.set_current_safety_param_sp(self.SAFETY_PARAM_SP)
     self.safety.set_safety_hooks(CarParams.SafetyModel.toyota, self.EPS_SCALE | ToyotaSafetyFlags.STOCK_LONGITUDINAL)
     self.safety.init_tests()
 

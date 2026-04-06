@@ -7,7 +7,7 @@ from opendbc.car.toyota.values import Ecu, CAR, DBC, ToyotaFlags, CarControllerP
                                                   ToyotaSafetyFlags, UNSUPPORTED_DSU_CAR
 from opendbc.car.disable_ecu import disable_ecu
 from opendbc.car.interfaces import CarInterfaceBase
-from opendbc.iqpilot.car.toyota.values import ToyotaFlagsIQ, ToyotaSafetyFlagsIQ
+from opendbc.sunnypilot.car.toyota.values import ToyotaFlagsSP, ToyotaSafetyFlagsSP
 
 SteerControlType = structs.CarParams.SteerControlType
 
@@ -20,7 +20,7 @@ class CarInterface(CarInterfaceBase):
   DRIVABLE_GEARS = (structs.CarState.GearShifter.sport,)
 
   @staticmethod
-  def get_pid_accel_limits(CP, CP_IQ, current_speed, cruise_speed):
+  def get_pid_accel_limits(CP, CP_SP, current_speed, cruise_speed):
     return CarControllerParams(CP).ACCEL_MIN, CarControllerParams(CP).ACCEL_MAX
 
   @staticmethod
@@ -130,26 +130,26 @@ class CarInterface(CarInterfaceBase):
     return ret
 
   @staticmethod
-  def _get_params_iq(stock_cp: structs.CarParams, ret: structs.IQCarParams, candidate, fingerprint: dict[int, dict[int, int]],
-                     car_fw: list[structs.CarParams.CarFw], alpha_long: bool, is_release_iq: bool, docs: bool) -> structs.IQCarParams:
+  def _get_params_sp(stock_cp: structs.CarParams, ret: structs.CarParamsSP, candidate, fingerprint: dict[int, dict[int, int]],
+                     car_fw: list[structs.CarParams.CarFw], alpha_long: bool, is_release_sp: bool, docs: bool) -> structs.CarParamsSP:
     if candidate in UNSUPPORTED_DSU_CAR:
-      ret.safetyParam |= ToyotaSafetyFlagsIQ.UNSUPPORTED_DSU
+      ret.safetyParam |= ToyotaSafetyFlagsSP.UNSUPPORTED_DSU
 
     # Detect smartDSU, which intercepts ACC_CMD from the DSU (or radar) allowing openpilot to send it
     # 0x2AA is sent by a similar device which intercepts the radar instead of DSU on NO_DSU_CARs
     if 0x2FF in fingerprint[0] or (0x2AA in fingerprint[0] and candidate in NO_DSU_CAR):
-      ret.flags |= ToyotaFlagsIQ.SMART_DSU.value
+      ret.flags |= ToyotaFlagsSP.SMART_DSU.value
 
     if 0x2AA in fingerprint[0] and candidate in NO_DSU_CAR:
-      ret.flags |= ToyotaFlagsIQ.RADAR_CAN_FILTER.value
+      ret.flags |= ToyotaFlagsSP.RADAR_CAN_FILTER.value
 
-    # Detect ZSS, which allows iqpilot to utilize an improved angle sensor for some Toyota vehicles
+    # Detect ZSS, which allows sunnypilot to utilize an improved angle sensor for some Toyota vehicles
     # https://github.com/zorrobyte/betterToyotaAngleSensorForOP
     if 0x23 in fingerprint[0] and not stock_cp.flags & ToyotaFlags.SECOC:
-      ret.flags |= ToyotaFlagsIQ.ZSS.value
+      ret.flags |= ToyotaFlagsSP.ZSS.value
 
     if candidate == CAR.TOYOTA_PRIUS:
-      if ret.flags & ToyotaFlagsIQ.ZSS:
+      if ret.flags & ToyotaFlagsSP.ZSS:
         stock_cp.steerRatio = 15.0
         stock_cp.mass = 3370.
 
@@ -160,7 +160,7 @@ class CarInterface(CarInterfaceBase):
             stock_cp.steerActuatorDelay = 0.25
             CarInterfaceBase.configure_torque_tune(candidate, stock_cp.lateralTuning, steering_angle_deadzone_deg=0.0)
 
-    use_sdsu = bool(ret.flags & ToyotaFlagsIQ.SMART_DSU)
+    use_sdsu = bool(ret.flags & ToyotaFlagsSP.SMART_DSU)
 
     stock_cp.minEnableSpeed = -1. if use_sdsu else stock_cp.minEnableSpeed
 
@@ -176,6 +176,7 @@ class CarInterface(CarInterfaceBase):
           stock_cp.flags |= ToyotaFlags.DISABLE_RADAR.value
       else:
         use_sdsu = use_sdsu and alpha_long
+        stock_cp.flags &= ~ToyotaFlags.DISABLE_RADAR.value
 
     # openpilot longitudinal enabled by default:
     #  - non-(TSS2 radar ACC cars) w/ smartDSU installed
@@ -192,12 +193,8 @@ class CarInterface(CarInterfaceBase):
                                not stock_cp.flags & ToyotaFlags.SECOC
 
     if ret.enableGasInterceptor:
-      ret.safetyParam |= ToyotaSafetyFlagsIQ.GAS_INTERCEPTOR
+      ret.safetyParam |= ToyotaSafetyFlagsSP.GAS_INTERCEPTOR
       stock_cp.minEnableSpeed = -1.
-
-    if ret.flags & ToyotaFlagsIQ.STOCK_LONGITUDINAL:
-      stock_cp.alphaLongitudinalAvailable = False
-      stock_cp.openpilotLongitudinalControl = False
 
     if not stock_cp.openpilotLongitudinalControl:
       stock_cp.safetyConfigs[0].safetyParam |= ToyotaSafetyFlags.STOCK_LONGITUDINAL.value
@@ -207,7 +204,7 @@ class CarInterface(CarInterfaceBase):
     return ret
 
   @staticmethod
-  def init(CP, CP_IQ, can_recv, can_send, communication_control=None):
+  def init(CP, CP_SP, can_recv, can_send, communication_control=None):
     # disable radar if alpha longitudinal toggled on radar-ACC car without CAN filter/smartDSU
     if CP.flags & ToyotaFlags.DISABLE_RADAR.value:
       if communication_control is None:

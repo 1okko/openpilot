@@ -15,34 +15,34 @@ DEBUG_VARS = {
   'controls_allowed': lambda safety: safety.get_controls_allowed(),
   'controls_requested_lat': lambda safety: safety.get_controls_requested_lat(),
   'controls_allowed_lat': lambda safety: safety.get_controls_allowed_lat(),
-  'current_disengage_reason': lambda safety: safety.aol_get_current_disengage_reason(),
+  'current_disengage_reason': lambda safety: safety.mads_get_current_disengage_reason(),
   'stock_acc_main': lambda safety: safety.get_acc_main_on(),
-  'aol_acc_main': lambda safety: safety.get_aol_acc_main(),
+  'mads_acc_main': lambda safety: safety.get_mads_acc_main(),
 }
 
 
 # replay a drive to check for safety violations
-def replay_drive(msgs, safety_mode, param, alternative_experience, param_iq):
+def replay_drive(msgs, safety_mode, param, alternative_experience, param_sp):
   safety = libsafety_py.libsafety
   msgs.sort(key=lambda m: m.logMonoTime)
 
-  safety.set_current_safety_param_iq(param_iq)
+  safety.set_current_safety_param_sp(param_sp)
   err = safety.set_safety_hooks(safety_mode, param)
   assert err == 0, "invalid safety mode: %d" % safety_mode
   safety.set_alternative_experience(alternative_experience)
 
-  _enable_aol = bool(alternative_experience & ALTERNATIVE_EXPERIENCE.ENABLE_AOL)
-  _disengage_lateral_on_brake = bool(alternative_experience & ALTERNATIVE_EXPERIENCE.AOL_DISENGAGE_LATERAL_ON_BRAKE)
-  _pause_lateral_on_brake = bool(alternative_experience & ALTERNATIVE_EXPERIENCE.AOL_PAUSE_LATERAL_ON_BRAKE)
-  safety.set_aol_params(_enable_aol, _disengage_lateral_on_brake, _pause_lateral_on_brake)
+  _enable_mads = bool(alternative_experience & ALTERNATIVE_EXPERIENCE.ENABLE_MADS)
+  _disengage_lateral_on_brake = bool(alternative_experience & ALTERNATIVE_EXPERIENCE.MADS_DISENGAGE_LATERAL_ON_BRAKE)
+  _pause_lateral_on_brake = bool(alternative_experience & ALTERNATIVE_EXPERIENCE.MADS_PAUSE_LATERAL_ON_BRAKE)
+  safety.set_mads_params(_enable_mads, _disengage_lateral_on_brake, _pause_lateral_on_brake)
   print("alternative experience:")
-  print(f"  enable aol: {_enable_aol}")
+  print(f"  enable mads: {_enable_mads}")
   print(f"  disengage lateral on brake: {_disengage_lateral_on_brake}")
   print(f"  pause lateral on brake: {_pause_lateral_on_brake}")
 
   init_segment(safety, msgs, safety_mode, param)
 
-  rx_tot, rx_invalid, tx_tot, tx_blocked, tx_controls, tx_controls_lat, tx_controls_blocked, tx_controls_lat_blocked, aol_mismatch = 0, 0, 0, 0, 0, 0, 0, 0, 0
+  rx_tot, rx_invalid, tx_tot, tx_blocked, tx_controls, tx_controls_lat, tx_controls_blocked, tx_controls_lat_blocked, mads_mismatch = 0, 0, 0, 0, 0, 0, 0, 0, 0
   safety_tick_rx_invalid = False
   blocked_addrs = Counter()
   invalid_addrs = set()
@@ -71,8 +71,8 @@ def replay_drive(msgs, safety_mode, param, alternative_experience, param_iq):
 
         # mismatched
         if safety.get_controls_allowed() and not safety.get_controls_allowed_lat():
-          aol_mismatch += 1
-          print(f"controls allowed but not controls allowed lat [{aol_mismatch}]")
+          mads_mismatch += 1
+          print(f"controls allowed but not controls allowed lat [{mads_mismatch}]")
           print(f"msg:{canmsg.address} ({hex(canmsg.address)})")
           for var, getter in DEBUG_VARS.items():
             print(f"  {var}: {getter(safety)}")
@@ -132,7 +132,7 @@ def replay_drive(msgs, safety_mode, param, alternative_experience, param_iq):
   print("blocked with controls allowed:", tx_controls_blocked)
   print("blocked with controls_lat allowed:", tx_controls_lat_blocked)
   print("blocked addrs:", blocked_addrs)
-  print("aol enabled:", safety.get_enable_aol())
+  print("mads enabled:", safety.get_enable_mads())
 
   return tx_controls_blocked == 0 and tx_controls_lat_blocked == 0 and rx_invalid == 0 and not safety_tick_rx_invalid
 
@@ -146,24 +146,24 @@ if __name__ == "__main__":
   parser.add_argument("--mode", type=int, help="Override the safety mode from the log")
   parser.add_argument("--param", type=int, help="Override the safety param from the log")
   parser.add_argument("--alternative-experience", type=int, help="Override the alternative experience from the log")
-  parser.add_argument("--param-sp", type=int, help="Override the iqpilot safety param from the log")
+  parser.add_argument("--param-sp", type=int, help="Override the sunnypilot safety param from the log")
   args = parser.parse_args()
 
   lr = LogReader(args.route_or_segment_name[0])
 
-  if None in (args.mode, args.param, args.alternative_experience, args.param_iq):
+  if None in (args.mode, args.param, args.alternative_experience, args.param_sp):
     CP = lr.first('carParams')
-    CP_IQ = lr.first('iqCarParams')
+    CP_SP = lr.first('carParamsSP')
     if args.mode is None:
       args.mode = CP.safetyConfigs[-1].safetyModel.raw
     if args.param is None:
       args.param = CP.safetyConfigs[-1].safetyParam
     if args.alternative_experience is None:
       args.alternative_experience = CP.alternativeExperience
-    if args.param_iq is None:
-      _param_iq = CP_IQ.safetyParam if hasattr(CP_IQ, 'safetyParam') else 0
-      args.param_iq = _param_iq
+    if args.param_sp is None:
+      _param_sp = CP_SP.safetyParam if hasattr(CP_SP, 'safetyParam') else 0
+      args.param_sp = _param_sp
 
   print(f"replaying {args.route_or_segment_name[0]} with safety mode {args.mode}, param {args.param}, alternative experience {args.alternative_experience}, " +
-        f"param_iq {args.param_iq}")
-  replay_drive(list(lr), args.mode, args.param, args.alternative_experience, args.param_iq)
+        f"param_sp {args.param_sp}")
+  replay_drive(list(lr), args.mode, args.param, args.alternative_experience, args.param_sp)

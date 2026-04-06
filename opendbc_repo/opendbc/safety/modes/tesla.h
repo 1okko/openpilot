@@ -201,7 +201,7 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
 
   if (msg->bus == 1U) {
     if (msg->addr == 0x3DFU) {
-      aol_button_press = (msg->data[3] == 3U) ? AOL_BUTTON_PRESSED : AOL_BUTTON_NOT_PRESSED;
+      mads_button_press = (msg->data[3] == 3U) ? MADS_BUTTON_PRESSED : MADS_BUTTON_NOT_PRESSED;
     }
   }
 
@@ -379,9 +379,9 @@ static safety_config tesla_init(uint16_t param) {
   tesla_longitudinal = GET_FLAG(param, TESLA_FLAG_LONGITUDINAL_CONTROL);
 #endif
 
-  const uint16_t TESLA_PARAM_IQ_VEHICLE_BUS = 1;
+  const uint16_t TESLA_PARAM_SP_VEHICLE_BUS = 1;
 
-  tesla_has_vehicle_bus = GET_FLAG(current_safety_param_iq, TESLA_PARAM_IQ_VEHICLE_BUS);
+  tesla_has_vehicle_bus = GET_FLAG(current_safety_param_sp, TESLA_PARAM_SP_VEHICLE_BUS);
 
   tesla_stock_aeb = false;
   tesla_stock_lkas = false;

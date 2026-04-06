@@ -3,13 +3,15 @@ import numpy as np
 from dataclasses import dataclass
 from opendbc.car import structs, rate_limit, DT_CTRL, ACCELERATION_DUE_TO_GRAVITY
 from opendbc.car.vehicle_model import VehicleModel
+from typing import Tuple
 
 FRICTION_THRESHOLD = 0.2
 
 # ISO 11270
 ISO_LATERAL_ACCEL = 3.0  # m/s^2
 ISO_LATERAL_JERK = 5.0  # m/s^3
-AVERAGE_ROAD_ROLL = 0.06  # ~3.4 degrees
+# Add extra tolerance for average banked road since safety doesn't have the roll
+AVERAGE_ROAD_ROLL = 0.06  # ~3.4 degrees, 6% superelevation. higher actual roll lowers lateral acceleration
 MAX_LATERAL_ACCEL = ISO_LATERAL_ACCEL + (ACCELERATION_DUE_TO_GRAVITY * AVERAGE_ROAD_ROLL)  # ~3.6 m/s^2
 
 
@@ -24,8 +26,7 @@ class AngleSteeringLimits:
   MAX_LATERAL_ACCEL: float = 0
   MAX_LATERAL_JERK: float = 0
   MAX_ANGLE_RATE: float = math.inf
-
-
+  
 @dataclass
 class CurvatureSteeringLimits:
   CURVATURE_MAX: float
@@ -98,31 +99,6 @@ def apply_std_steer_angle_limits(apply_angle: float, apply_angle_last: float, v_
   return float(np.clip(new_apply_angle, -limits.STEER_ANGLE_MAX, limits.STEER_ANGLE_MAX))
 
 
-def _get_max_curvature_jerk(v_ego: float, steer_step: int) -> float:
-  ts_elapsed = steer_step * DT_CTRL
-  curvature_rate_limit = ISO_LATERAL_JERK / (max(v_ego, 1.0) ** 2)
-  return curvature_rate_limit * ts_elapsed
-
-
-def _get_max_curvature(v_ego: float) -> tuple[float, float]:
-  max_curvature = MAX_LATERAL_ACCEL / (max(v_ego, 1.0) ** 2)
-  return -max_curvature, max_curvature
-
-
-def apply_std_curvature_limits(apply_curvature: float, apply_curvature_last: float, v_ego: float, curvature: float, override: bool,
-                               steer_step: int, lat_active: bool, limits: CurvatureSteeringLimits) -> float:
-  max_jerk = _get_max_curvature_jerk(v_ego, steer_step)
-  new_apply_curvature = float(np.clip(apply_curvature, apply_curvature_last - max_jerk, apply_curvature_last + max_jerk))
-
-  min_curvature, max_curvature = _get_max_curvature(v_ego)
-  new_apply_curvature = float(np.clip(new_apply_curvature, min_curvature, max_curvature))
-
-  if not lat_active:
-    new_apply_curvature = curvature
-
-  return float(np.clip(new_apply_curvature, -limits.CURVATURE_MAX, limits.CURVATURE_MAX))
-
-
 def get_max_angle_delta_vm(v_ego_raw: float, VM: VehicleModel, limits):
   """Calculate the maximum steering angle rate based on lateral jerk limits."""
   max_curvature_rate_sec = limits.ANGLE_LIMITS.MAX_LATERAL_JERK / (v_ego_raw ** 2)  # (1/m)/s
@@ -158,6 +134,84 @@ def apply_steer_angle_limits_vm(apply_angle: float, apply_angle_last: float, v_e
 
   # prevent fault
   return float(np.clip(new_apply_angle, -limits.ANGLE_LIMITS.STEER_ANGLE_MAX, limits.ANGLE_LIMITS.STEER_ANGLE_MAX))
+
+def get_max_curvature_jerk(v_ego: float, steer_step: int) -> float:
+  # ISO 11270
+  # Lateral jerk
+  ts_elapsed = steer_step * DT_CTRL
+  curvature_rate_limit = ISO_LATERAL_JERK / (max(v_ego, 1.0) ** 2)
+  max_jerk = curvature_rate_limit * ts_elapsed
+  return max_jerk
+  
+def get_max_curvature_roll(roll: float, v_ego: float) -> Tuple[float, float]:
+  # ISO 11270
+  # Lateral acceleration
+  max_lat_accel = ISO_LATERAL_ACCEL - (roll * ACCELERATION_DUE_TO_GRAVITY)
+  min_lat_accel = -ISO_LATERAL_ACCEL - (roll * ACCELERATION_DUE_TO_GRAVITY)
+  max_curvature = max_lat_accel / (max(v_ego, 1.0) ** 2)
+  min_curvature = min_lat_accel / (max(v_ego, 1.0) ** 2)
+  return min_curvature, max_curvature
+  
+def get_max_curvature_average(v_ego: float) -> Tuple[float, float]:
+  max_curvature = MAX_LATERAL_ACCEL / (max(v_ego, 1.0) ** 2)
+  return -max_curvature, max_curvature
+  
+def get_max_curvature_yaw_rate(yaw_rate: float, apply_curvature: float, apply_curvature_last: float, v_ego: float,
+                               steer_step: int, override: bool) -> Tuple[float, float]:
+  # This is a method for curvature values that do not represent physically true curvature values 
+  # by roughly approximating a max physically incorrect curvature value by yaw rate.
+  # A corresponding panda safety has to allow for returning curvatures from violation range including sensor noise
+  # -> complicated
+  
+  min_curvature, max_curvature = get_max_curvature_average(v_ego)
+  
+  if not override: 
+    max_lateral_accel = max_curvature * (max(v_ego, 1.0) ** 2)
+    actual_lat_accel  = abs(yaw_rate) * max(v_ego, 1.0)
+    
+    if actual_lat_accel > max_lateral_accel:
+      scale         = MAX_LATERAL_ACCEL / actual_lat_accel
+      max_curvature = apply_curvature * scale
+      
+  # reapply jerk
+  max_jerk        = get_max_curvature_jerk(v_ego, steer_step)
+  curvature_up    = abs(apply_curvature_last) + max_jerk
+  curvature_down  = abs(apply_curvature_last) - max_jerk
+  max_curvature   = float(np.clip(max_curvature, curvature_down, curvature_up))
+    
+  return -max_curvature, max_curvature
+  
+  
+def apply_std_curvature_limits(apply_curvature: float, apply_curvature_last: float, v_ego: float, curvature: float, override: bool,
+                               steer_step: int, lat_active: bool, limits: CurvatureSteeringLimits, roll=None, yaw_rate=None) -> float:
+
+  new_apply_curvature = apply_curvature
+  
+  # Lateral jerk
+  max_jerk = get_max_curvature_jerk(v_ego, steer_step)
+  curvature_up = apply_curvature_last + max_jerk
+  curvature_down  = apply_curvature_last - max_jerk
+                                 
+  new_apply_curvature = float(np.clip(new_apply_curvature, curvature_down, curvature_up))
+                                 
+  # Lateral acceleration
+  if roll: # true roll asymmetrically (need roll for panda...) -> I've sent this via custom CAN message, but prefering sensor data channel to panda with exact time frame assignment
+    assert False # not allowed
+    min_curvature, max_curvature = get_max_curvature_roll(roll, v_ego)
+  elif yaw_rate: # approximation by yaw rate (suited for non mathematically true curvature values with offset or similar)
+    assert False # not allowed
+    min_curvature, max_curvature = get_max_curvature_yaw_rate(yaw_rate, apply_curvature, apply_curvature_last , v_ego, steer_step, override)
+  else: # average raod roll for safety without true roll (allowes up to ~3.6m/s^2 (suited for curvature values with positive offsets without true loss))
+    min_curvature, max_curvature = get_max_curvature_average(v_ego)
+    
+                                 
+  new_apply_curvature = float(np.clip(new_apply_curvature, min_curvature, max_curvature))
+
+  # set output curvature as current curvature (if otherwise set to 0 in car controller)
+  if not lat_active:
+    new_apply_curvature = curvature
+
+  return float(np.clip(new_apply_curvature, -limits.CURVATURE_MAX, limits.CURVATURE_MAX))
 
 
 def common_fault_avoidance(fault_condition: bool, request: bool, above_limit_frames: int,

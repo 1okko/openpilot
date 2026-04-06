@@ -1,8 +1,10 @@
 import random
 import re
 
+from opendbc.car import DT_CTRL
 from opendbc.car.structs import CarParams
-from opendbc.car.volkswagen.values import CAR, FW_QUERY_CONFIG, WMI
+from opendbc.car.volkswagen.carcontroller import HCAMitigation
+from opendbc.car.volkswagen.values import CAR, CarControllerParams as CCP, FW_QUERY_CONFIG, WMI
 from opendbc.car.volkswagen.fingerprints import FW_VERSIONS
 
 Ecu = CarParams.Ecu
@@ -11,6 +13,20 @@ CHASSIS_CODE_PATTERN = re.compile('[A-Z0-9]{2}')
 # TODO: determine the unknown groups
 SPARE_PART_FW_PATTERN = re.compile(b'\xf1\x87(?P<gateway>[0-9][0-9A-Z]{2})(?P<unknown>[0-9][0-9A-Z][0-9])(?P<unknown2>[0-9A-Z]{2}[0-9])([A-Z0-9]| )')
 
+
+class TestVolkswagenHCAMitigation:
+  STUCK_TORQUE_FRAMES = round(CCP.STEER_TIME_STUCK_TORQUE / (DT_CTRL * CCP.STEER_STEP))
+
+  def test_same_torque_mitigation(self):
+    """Same-torque nudge fires at the threshold, in the correct direction, and resets cleanly."""
+    hca_mitigation = HCAMitigation(CCP)
+
+    for actuator_value in (-CCP.STEER_MAX, -1, 0, 1, CCP.STEER_MAX):
+      hca_mitigation.update(0, 0)  # Reset mitigation state
+      for frame in range(self.STUCK_TORQUE_FRAMES + 2):
+        should_nudge = actuator_value != 0 and frame == self.STUCK_TORQUE_FRAMES
+        expected_torque = actuator_value - (1, -1)[actuator_value < 0] if should_nudge else actuator_value
+        assert hca_mitigation.update(actuator_value, actuator_value) == expected_torque, f"{frame=}"
 
 class TestVolkswagenPlatformConfigs:
   def test_spare_part_fw_pattern(self, subtests):
@@ -33,17 +49,8 @@ class TestVolkswagenPlatformConfigs:
         for comp in CAR:
           if platform == comp:
             continue
-
-          shared_chassis_codes = platform.config.chassis_codes & comp.config.chassis_codes
-          if len(shared_chassis_codes) == 0:
-            continue
-
-          platform_model_years = getattr(platform.config, "model_years", set())
-          comp_model_years = getattr(comp.config, "model_years", set())
-          if platform_model_years and comp_model_years and platform_model_years.isdisjoint(comp_model_years):
-            continue
-
-          assert set() == shared_chassis_codes, f"Shared chassis codes: {comp}"
+          assert set() == platform.config.chassis_codes & comp.config.chassis_codes, \
+                           f"Shared chassis codes: {comp}"
 
   def test_custom_fuzzy_fingerprinting(self, subtests):
     all_radar_fw = list({fw for ecus in FW_VERSIONS.values() for fw in ecus[Ecu.fwdRadar, 0x757, None]})
@@ -52,23 +59,18 @@ class TestVolkswagenPlatformConfigs:
       with subtests.test(platform=platform.name):
         for wmi in WMI:
           for chassis_code in platform.config.chassis_codes | {"00"}:
-            platform_model_years = getattr(platform.config, "model_years", set())
-            model_years = platform_model_years if platform_model_years else {"0"}
-            for model_year in model_years | {"0"}:
-              vin = ["0"] * 17
-              vin[0:3] = wmi
-              vin[6:8] = chassis_code
-              vin[9] = model_year
-              vin = "".join(vin)
+            vin = ["0"] * 17
+            vin[0:3] = wmi
+            vin[6:8] = chassis_code
+            vin = "".join(vin)
 
-              # Check a few FW cases - expected, unexpected
-              for radar_fw in random.sample(all_radar_fw, 5) + [b'\xf1\x875Q0907572G \xf1\x890571', b'\xf1\x877H9907572AA\xf1\x890396']:
-                model_year_match = len(platform_model_years) == 0 or model_year in platform_model_years
-                should_match = ((wmi in platform.config.wmis and chassis_code in platform.config.chassis_codes and model_year_match) and
-                                radar_fw in all_radar_fw)
+            # Check a few FW cases - expected, unexpected
+            for radar_fw in random.sample(all_radar_fw, 5) + [b'\xf1\x875Q0907572G \xf1\x890571', b'\xf1\x877H9907572AA\xf1\x890396']:
+              should_match = ((wmi in platform.config.wmis and chassis_code in platform.config.chassis_codes) and
+                              radar_fw in all_radar_fw)
 
-                live_fws = {(0x757, None): [radar_fw]}
-                matches = FW_QUERY_CONFIG.match_fw_to_car_fuzzy(live_fws, vin, FW_VERSIONS)
+              live_fws = {(0x757, None): [radar_fw]}
+              matches = FW_QUERY_CONFIG.match_fw_to_car_fuzzy(live_fws, vin, FW_VERSIONS)
 
-                expected_matches = {platform} if should_match else set()
-                assert expected_matches == matches, "Bad match"
+              expected_matches = {platform} if should_match else set()
+              assert expected_matches == matches, "Bad match"

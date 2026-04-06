@@ -6,7 +6,7 @@ from opendbc.car.structs import CarParams
 from opendbc.car.docs_definitions import CarDocs, CarFootnote, CarHarness, CarParts, Column, SupportType
 from opendbc.car.fw_query_definitions import FwQueryConfig, Request, StdQueries
 
-from opendbc.iqpilot.car.gm.values_ext import GMFlagsIQ
+from opendbc.sunnypilot.car.gm.values_ext import GMFlagsSP
 
 Ecu = CarParams.Ecu
 
@@ -126,7 +126,7 @@ class GMSDGMPlatformConfig(GMPlatformConfig):
 @dataclass
 class GMNonSccPlatformConfig(GMPlatformConfig):
   def init(self):
-    self.iq_flags |= GMFlagsIQ.NON_ACC
+    self.sp_flags |= GMFlagsSP.NON_ACC
 
 
 class CAR(Platforms):

@@ -165,7 +165,7 @@ static void hyundai_rx_hook(const CANPacket_t *msg) {
     }
 
     if (msg->addr == 0x391U) {
-      aol_button_press = GET_BIT(msg, 4U) ? AOL_BUTTON_PRESSED : AOL_BUTTON_NOT_PRESSED;
+      mads_button_press = GET_BIT(msg, 4U) ? MADS_BUTTON_PRESSED : MADS_BUTTON_NOT_PRESSED;
     }
 
     // ACC steering wheel buttons

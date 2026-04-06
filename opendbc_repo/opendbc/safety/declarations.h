@@ -145,10 +145,11 @@ typedef struct {
 } AngleSteeringParams;
 
 typedef struct {
+  // curvature cmd limits
   const int max_curvature;
   const float curvature_to_can;
   const float send_rate;
-  const bool inactive_curvature_is_zero;
+  const bool inactive_curvature_is_zero; // if false, enforces angle near meas when disabled (default)
   const int max_power;
 } CurvatureSteeringLimits;
 
@@ -157,6 +158,8 @@ typedef struct {
   const int max_accel;
   const int min_accel;
   const int inactive_accel;
+  const int override_accel;
+  const int allow_override;
 
   // gas & brake cmd limits
   // inactive and min gas are 0 on most safety modes
@@ -237,15 +240,17 @@ bool safety_tx_hook(CANPacket_t *msg);
 int to_signed(int d, int bits);
 void update_sample(struct sample_t *sample, int sample_new);
 bool get_longitudinal_allowed(void);
+bool get_longitudinal_allowed_override(void);
 int ROUND(float val);
 void gen_crc_lookup_table_8(uint8_t poly, uint8_t crc_lut[]);
 void gen_crc_lookup_table_16(uint16_t poly, uint16_t crc_lut[]);
 bool steer_torque_cmd_checks(int desired_torque, int steer_req, const TorqueSteeringLimits limits);
 bool steer_angle_cmd_checks(int desired_angle, bool steer_control_enabled, const AngleSteeringLimits limits);
+bool steer_power_cmd_checks(int desired_steer_power, bool steer_control_enabled, const CurvatureSteeringLimits limits);
+bool steer_curvature_cmd_checks_roll(int desired_curvature, bool steer_control_enabled, const CurvatureSteeringLimits limits);
+bool steer_curvature_cmd_checks_average(int desired_curvature, bool steer_control_enabled, const CurvatureSteeringLimits limits);
 bool steer_angle_cmd_checks_vm(int desired_angle, bool steer_control_enabled, const AngleSteeringLimits limits,
                                const AngleSteeringParams params);
-bool steer_power_cmd_checks(int desired_steer_power, bool steer_control_enabled, const CurvatureSteeringLimits limits);
-bool steer_curvature_cmd_checks_average(int desired_curvature, bool steer_control_enabled, const CurvatureSteeringLimits limits);
 bool longitudinal_accel_checks(int desired_accel, const LongitudinalLimits limits);
 bool longitudinal_speed_checks(int desired_speed, const LongitudinalLimits limits);
 bool longitudinal_gas_checks(int desired_gas, const LongitudinalLimits limits);
@@ -296,6 +301,10 @@ extern uint32_t rt_angle_msgs;
 extern uint32_t ts_angle_check_last;
 extern int desired_angle_last;
 extern struct sample_t angle_meas;         // last 6 steer angles/curvatures
+extern struct sample_t curvature_meas;     // last 6 curvatures
+extern struct sample_t roll;               // last 6 roll values
+extern int desired_curvature_last;
+extern int desired_steer_power_last;
 
 // Alt experiences can be set with a USB command
 // It enables features that allow alternative experiences, like not disengaging on gas press
@@ -327,7 +336,7 @@ typedef struct {
 
 extern uint16_t current_safety_mode;
 extern uint16_t current_safety_param;
-extern uint16_t current_safety_param_iq;
+extern uint16_t current_safety_param_sp;
 extern safety_config current_safety_config;
 
 int safety_fwd_hook(int bus_num, int addr);
@@ -353,7 +362,7 @@ extern const safety_hooks tesla_hooks;
 extern const safety_hooks toyota_hooks;
 extern const safety_hooks volkswagen_mlb_hooks;
 extern const safety_hooks volkswagen_mqb_hooks;
-extern const safety_hooks volkswagen_meb_hooks;
 extern const safety_hooks volkswagen_pq_hooks;
+extern const safety_hooks volkswagen_meb_hooks;
 extern const safety_hooks rivian_hooks;
 extern const safety_hooks psa_hooks;

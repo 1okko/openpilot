@@ -12,8 +12,8 @@ def _create_nidec_can_parser(car_fingerprint):
 
 
 class RadarInterface(RadarInterfaceBase):
-  def __init__(self, CP, CP_IQ):
-    super().__init__(CP, CP_IQ)
+  def __init__(self, CP, CP_SP):
+    super().__init__(CP, CP_SP)
     self.track_id = 0
     self.radar_fault = False
     self.radar_wrong_config = False

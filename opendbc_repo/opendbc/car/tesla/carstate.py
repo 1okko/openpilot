@@ -7,15 +7,15 @@ from opendbc.car.interfaces import CarStateBase
 from opendbc.car.tesla.teslacan import get_steer_ctrl_type
 from opendbc.car.tesla.values import DBC, CANBUS, GEAR_MAP, STEER_THRESHOLD, TeslaFlags
 
-from opendbc.iqpilot.car.tesla.carstate_ext import CarStateExt
+from opendbc.sunnypilot.car.tesla.carstate_ext import CarStateExt
 
 ButtonType = structs.CarState.ButtonEvent.Type
 
 
 class CarState(CarStateBase, CarStateExt):
-  def __init__(self, CP, CP_IQ):
-    CarStateBase.__init__(self, CP, CP_IQ)
-    CarStateExt.__init__(self, CP, CP_IQ)
+  def __init__(self, CP, CP_SP):
+    CarStateBase.__init__(self, CP, CP_SP)
+    CarStateExt.__init__(self, CP, CP_SP)
     self.can_define = CANDefine(DBC[CP.carFingerprint][Bus.party])
     self.shifter_values = self.can_define.dv["DI_systemStatus"]["DI_gear"]
 
@@ -37,11 +37,11 @@ class CarState(CarStateBase, CarStateExt):
     self.autopark_prev = autopark_now
     self.cruise_enabled_prev = cruise_enabled
 
-  def update(self, can_parsers) -> tuple[structs.CarState, structs.IQCarState]:
+  def update(self, can_parsers) -> tuple[structs.CarState, structs.CarStateSP]:
     cp_party = can_parsers[Bus.party]
     cp_ap_party = can_parsers[Bus.ap_party]
     ret = structs.CarState()
-    ret_iq = structs.IQCarState()
+    ret_sp = structs.CarStateSP()
 
     # Vehicle speed
     ret.vEgoRaw = cp_party.vl["DI_speed"]["DI_vehicleSpeed"] * CV.KPH_TO_MS
@@ -142,14 +142,14 @@ class CarState(CarStateBase, CarStateExt):
     # Messages needed by carcontroller
     self.das_control = copy.copy(cp_ap_party.vl["DAS_control"])
 
-    CarStateExt.update(self, ret, ret_iq, can_parsers)
+    CarStateExt.update(self, ret, ret_sp, can_parsers)
 
-    return ret, ret_iq
+    return ret, ret_sp
 
   @staticmethod
-  def get_can_parsers(CP, CP_IQ):
+  def get_can_parsers(CP, CP_SP):
     return {
       Bus.party: CANParser(DBC[CP.carFingerprint][Bus.party], [], CANBUS.party),
       Bus.ap_party: CANParser(DBC[CP.carFingerprint][Bus.party], [], CANBUS.autopilot_party),
-      **CarStateExt.get_parser(CP, CP_IQ),
+      **CarStateExt.get_parser(CP, CP_SP),
     }

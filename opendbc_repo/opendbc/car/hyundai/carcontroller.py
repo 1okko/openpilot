@@ -8,10 +8,11 @@ from opendbc.car.hyundai.hyundaicanfd import CanBus
 from opendbc.car.hyundai.values import HyundaiFlags, Buttons, CarControllerParams, CAR
 from opendbc.car.interfaces import CarControllerBase
 
-from opendbc.iqpilot.car.hyundai.escc import EsccCarController
-from opendbc.iqpilot.car.hyundai.longitudinal.controller import LongitudinalController
-from opendbc.iqpilot.car.hyundai.lead_data_ext import LeadDataCarController
-from opendbc.iqpilot.car.hyundai.aol import AolCarController
+from opendbc.sunnypilot.car.hyundai.escc import EsccCarController
+from opendbc.sunnypilot.car.hyundai.icbm import IntelligentCruiseButtonManagementInterface
+from opendbc.sunnypilot.car.hyundai.longitudinal.controller import LongitudinalController
+from opendbc.sunnypilot.car.hyundai.lead_data_ext import LeadDataCarController
+from opendbc.sunnypilot.car.hyundai.mads import MadsCarController
 
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
 LongCtrlState = structs.CarControl.Actuators.LongControlState
@@ -47,13 +48,15 @@ def process_hud_alert(enabled, fingerprint, hud_control):
   return sys_warning, sys_state, left_lane_warning, right_lane_warning
 
 
-class CarController(CarControllerBase, EsccCarController, LeadDataCarController, LongitudinalController, AolCarController):
-  def __init__(self, dbc_names, CP, CP_IQ):
-    CarControllerBase.__init__(self, dbc_names, CP, CP_IQ)
-    EsccCarController.__init__(self, CP, CP_IQ)
-    AolCarController.__init__(self)
+class CarController(CarControllerBase, EsccCarController, LeadDataCarController, LongitudinalController, MadsCarController,
+                    IntelligentCruiseButtonManagementInterface):
+  def __init__(self, dbc_names, CP, CP_SP):
+    CarControllerBase.__init__(self, dbc_names, CP, CP_SP)
+    EsccCarController.__init__(self, CP, CP_SP)
+    MadsCarController.__init__(self)
     LeadDataCarController.__init__(self, CP)
-    LongitudinalController.__init__(self, CP, CP_IQ)
+    LongitudinalController.__init__(self, CP, CP_SP)
+    IntelligentCruiseButtonManagementInterface.__init__(self, CP, CP_SP)
     self.CAN = CanBus(CP)
     self.params = CarControllerParams(CP)
     self.packer = CANPacker(dbc_names[Bus.pt])
@@ -64,11 +67,11 @@ class CarController(CarControllerBase, EsccCarController, LeadDataCarController,
     self.car_fingerprint = CP.carFingerprint
     self.last_button_frame = 0
 
-  def update(self, CC, CC_IQ, CS, now_nanos):
+  def update(self, CC, CC_SP, CS, now_nanos):
     EsccCarController.update(self, CS)
-    LeadDataCarController.update(self, CC_IQ)
-    AolCarController.update(self, self.CP, CC, CC_IQ, self.frame)
-    if self.frame % 2 == 0:
+    LeadDataCarController.update(self, CC_SP)
+    MadsCarController.update(self, self.CP, CC, CC_SP, self.frame)
+    if self.frame % 5 == 0:
       LongitudinalController.update(self, CC, CS)
 
     actuators = CC.actuators
@@ -121,6 +124,9 @@ class CarController(CarControllerBase, EsccCarController, LeadDataCarController,
     else:
       can_sends.extend(self.create_can_msgs(apply_steer_req, apply_torque, torque_fault, set_speed_in_units, accel,
                                             stopping, hud_control, actuators, CS, CC))
+
+    # Intelligent Cruise Button Management
+    can_sends.extend(IntelligentCruiseButtonManagementInterface.update(self, CS, CC_SP, self.packer, self.frame, self.last_button_frame, self.CAN))
 
     new_actuators = actuators.as_builder()
     new_actuators.torque = apply_torque / self.params.STEER_MAX

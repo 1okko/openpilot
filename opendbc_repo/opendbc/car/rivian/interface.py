@@ -4,7 +4,7 @@ from opendbc.car.rivian.carcontroller import CarController
 from opendbc.car.rivian.carstate import CarState
 from opendbc.car.rivian.radar_interface import RadarInterface
 from opendbc.car.rivian.values import RivianSafetyFlags
-from opendbc.iqpilot.car.rivian.values import RivianFlagsIQ
+from opendbc.sunnypilot.car.rivian.values import RivianFlagsSP
 
 
 class CarInterface(CarInterfaceBase):
@@ -38,10 +38,10 @@ class CarInterface(CarInterfaceBase):
     return ret
 
   @staticmethod
-  def _get_params_iq(stock_cp: structs.CarParams, ret: structs.IQCarParams, candidate, fingerprint: dict[int, dict[int, int]],
-                     car_fw: list[structs.CarParams.CarFw], alpha_long: bool, is_release_iq: bool, docs: bool) -> structs.IQCarParams:
-    if 0x31a in fingerprint[5]:
-      ret.flags |= RivianFlagsIQ.LONGITUDINAL_HARNESS_UPGRADE.value
+  def _get_params_sp(stock_cp: structs.CarParams, ret: structs.CarParamsSP, candidate, fingerprint: dict[int, dict[int, int]],
+                     car_fw: list[structs.CarParams.CarFw], alpha_long: bool, is_release_sp: bool, docs: bool) -> structs.CarParamsSP:
+    if 0x131a in fingerprint[1]:
+      ret.flags |= RivianFlagsSP.LONGITUDINAL_HARNESS_UPGRADE.value
       stock_cp.radarUnavailable = False
       stock_cp.enableBsm = True
       stock_cp.alphaLongitudinalAvailable = True

@@ -284,7 +284,7 @@ class SpeedLimitManager:
     # by day
     day_start = psd_06["PSD_Ges_Geschwindigkeit_Tag_Anf"]
     day_end = psd_06["PSD_Ges_Geschwindigkeit_Tag_Ende"]
-    now_weekday = (local_time.tm_wday + 1)  # Python: 0=Mon -> PSD: 1=Mon
+    now_weekday = (local_time.tm_wday + 1)  # Python: 0=Montag → PSD: 1=Montag
 
     if 1 <= day_start <= 7 and 1 <= day_end <= 7:
       if day_start <= day_end:
@@ -374,7 +374,7 @@ class SpeedLimitManager:
       return None, None
 
     sqrtD = math.sqrt(D)
-    # Smallest non-negative solution
+    # Kleinste nicht-negative Lösung
     s1 = (-B - sqrtD) / (2*A)
     s2 = (-B + sqrtD) / (2*A)
     s_candidates = [s for s in (s1, s2) if s >= 0.0]

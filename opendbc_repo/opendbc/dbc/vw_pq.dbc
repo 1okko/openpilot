@@ -1288,11 +1288,9 @@ BO_ 428 Bremse_8: 8 XXX
  SG_ BR8_Verz_EPB_akt : 13|1@1+ (1,0) [0|1] "" XXX
  SG_ BR8_Sta_Br_temp : 14|1@1+ (1,0) [0|1] "" XXX
  SG_ BR8_Sta_Br_Druck : 15|1@1+ (1,0) [0|1] "" XXX
- SG_ BR8_HHC_Haltebestaetigung : 16|1@1+ (1,0) [0|1] "" XXX
- SG_ BR8_HHC_Signal_QBit : 17|1@1+ (1,0) [0|1] "" XXX
- SG_ ESP_MKB_ausloesbar : 20|1@1+ (1,0) [0|1] "" XXX
- SG_ ESP_Haltebestaetigung : 21|1@1+ (1,0) [0|1] "" XXX
- SG_ ESC_Motorstartverzeogerung : 22|1@1+ (1,0) [0|1] "" XXX
+ SG_ BR8_TolAbgl_HL : 16|8@1+ (0.048828125,-6.201171875) [-6.201171875|6.15234375] "Unit_PerCent" XXX
+ SG_ BR8_TolAbgl_HR : 24|8@1+ (0.048828125,-6.201171875) [-6.201171875|6.15234375] "Unit_PerCent" XXX
+ SG_ BR8_Istbeschl : 32|9@1+ (0.02,-7.22) [-7.22|2.98] "Unit_MeterPerSeconSquar"  XXX
  SG_ BR8_Sta_HW_BLS : 41|1@1+ (1,0) [0|1] "" XXX
  SG_ BR8_QB_LBeschl : 42|1@1+ (1,0) [0|1] "" XXX
  SG_ BR8_ESC_Mode : 43|2@1+ (1,0) [0|3] "" XXX
@@ -1326,16 +1324,6 @@ BO_ 928 Bremse_10: 8 XXX
  SG_ B10_Fahrtr_VR : 61|1@1+ (1,0) [0|1] "" XXX
  SG_ B10_Fahrtr_HL : 62|1@1+ (1,0) [0|1] "" XXX
  SG_ B10_Fahrtr_HR : 63|1@1+ (1,0) [0|1] "" XXX
-
-BO_ 170 Blinkmodi_02: 8 XXX
- SG_ Hazard_Switch : 20|1@1+ (1,0) [0|1] "" XXX
- SG_ BM_links : 23|1@1+ (1,0) [0|1] "" XXX
- SG_ BM_rechts : 24|1@1+ (1,0) [0|1] "" XXX
- SG_ Left_Turn_Exterior_Bulb_1 : 25|1@1+ (1,0) [0|1] "" XXX
- SG_ Right_Turn_Exterior_Bulb_1 : 26|1@1+ (1,0) [0|1] "" XXX
- SG_ Left_Turn_Exterior_Bulb_2 : 27|1@1+ (1,0) [0|1] "" XXX
- SG_ Right_Turn_Exterior_Bulb_2 : 28|1@1+ (1,0) [0|1] "" XXX
- SG_ Fast_Send_Rate_Active : 37|1@1+ (1,0) [0|1] "" XXX
 
 BO_ 835 RDK_Status: 3 XXX
  SG_ RKS_Reifen_VL : 0|1@1+ (1,0) [0|1] "" XXX

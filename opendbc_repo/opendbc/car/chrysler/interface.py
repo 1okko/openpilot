@@ -5,7 +5,7 @@ from opendbc.car.chrysler.carstate import CarState
 from opendbc.car.chrysler.radar_interface import RadarInterface
 from opendbc.car.chrysler.values import CAR, RAM_HD, RAM_DT, RAM_CARS, ChryslerFlags, ChryslerSafetyFlags
 from opendbc.car.interfaces import CarInterfaceBase
-from opendbc.iqpilot.car.chrysler.values_ext import ChryslerFlagsIQ
+from opendbc.sunnypilot.car.chrysler.values_ext import ChryslerFlagsSP
 
 
 class CarInterface(CarInterfaceBase):
@@ -82,8 +82,8 @@ class CarInterface(CarInterfaceBase):
     return ret
 
   @staticmethod
-  def _get_params_iq(stock_cp: structs.CarParams, ret: structs.IQCarParams, candidate, fingerprint: dict[int, dict[int, int]],
-                     car_fw: list[structs.CarParams.CarFw], alpha_long: bool, is_release_iq: bool, docs: bool) -> structs.IQCarParams:
+  def _get_params_sp(stock_cp: structs.CarParams, ret: structs.CarParamsSP, candidate, fingerprint: dict[int, dict[int, int]],
+                     car_fw: list[structs.CarParams.CarFw], alpha_long: bool, is_release_sp: bool, docs: bool) -> structs.CarParamsSP:
     if candidate == CAR.RAM_1500_5TH_GEN:
       if stock_cp.minSteerSpeed != 0.:
         stock_cp.minSteerSpeed = 0.5
@@ -101,8 +101,9 @@ class CarInterface(CarInterfaceBase):
       stock_cp.steerRatio = 19.
 
     if 0x4FF in fingerprint[0]:
-      ret.flags |= ChryslerFlagsIQ.NO_MIN_STEERING_SPEED.value
+      ret.flags |= ChryslerFlagsSP.NO_MIN_STEERING_SPEED.value
       stock_cp.minSteerSpeed = 0.
 
+    ret.intelligentCruiseButtonManagementAvailable = True
 
     return ret

@@ -88,11 +88,11 @@ static void hyundai_canfd_rx_hook(const CANPacket_t *msg) {
       if (msg->addr == 0x1cfU) {
         cruise_button = msg->data[2] & 0x7U;
         main_button = GET_BIT(msg, 19U);
-        aol_button_press = GET_BIT(msg, 23U) ? AOL_BUTTON_PRESSED : AOL_BUTTON_NOT_PRESSED;
+        mads_button_press = GET_BIT(msg, 23U) ? MADS_BUTTON_PRESSED : MADS_BUTTON_NOT_PRESSED;
       } else {
         cruise_button = (msg->data[4] >> 4) & 0x7U;
         main_button = GET_BIT(msg, 34U);
-        aol_button_press = GET_BIT(msg, 39U) ? AOL_BUTTON_PRESSED : AOL_BUTTON_NOT_PRESSED;
+        mads_button_press = GET_BIT(msg, 39U) ? MADS_BUTTON_PRESSED : MADS_BUTTON_NOT_PRESSED;
       }
       hyundai_common_cruise_buttons_check(cruise_button, main_button);
     }

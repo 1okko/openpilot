@@ -156,8 +156,7 @@ class TestVolkswagenMqbLongSafety(TestVolkswagenMqbSafetyBase):
   def setUp(self):
     self.packer = CANPackerSafety("vw_mqb")
     self.safety = libsafety_py.libsafety
-    safety_param = VolkswagenSafetyFlags.LONG_CONTROL | VolkswagenSafetyFlags.ALLOW_LONG_ACCEL_WITH_GAS_PRESSED
-    self.safety.set_safety_hooks(CarParams.SafetyModel.volkswagen, safety_param)
+    self.safety.set_safety_hooks(CarParams.SafetyModel.volkswagen, VolkswagenSafetyFlags.LONG_CONTROL)
     self.safety.init_tests()
 
   # stock cruise controls are entirely bypassed under openpilot longitudinal control
@@ -211,12 +210,6 @@ class TestVolkswagenMqbLongSafety(TestVolkswagenMqbSafetyBase):
         self.assertEqual(send, self._tx(self._acc_07_msg(accel)), (controls_allowed, accel))
         # ensure the optional secondary accel field remains inactive for now
         self.assertEqual(is_inactive_accel, self._tx(self._acc_07_msg(accel, secondary_accel=accel)), (controls_allowed, accel))
-
-  def test_accel_allowed_with_gas_pressed(self):
-    self._rx(self._user_gas_msg(1))
-    self.safety.set_controls_allowed(True)
-    self.assertTrue(self._tx(self._acc_06_msg(0.5)))
-    self.assertTrue(self._tx(self._acc_07_msg(0.5)))
 
 
 if __name__ == "__main__":

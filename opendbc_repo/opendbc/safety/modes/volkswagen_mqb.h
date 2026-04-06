@@ -26,7 +26,6 @@ static safety_config volkswagen_mqb_init(uint16_t param) {
 
 #ifdef ALLOW_DEBUG
   volkswagen_longitudinal = GET_FLAG(param, FLAG_VOLKSWAGEN_LONG_CONTROL);
-  volkswagen_allow_long_accel_with_gas_pressed = GET_FLAG(param, FLAG_VOLKSWAGEN_ALLOW_LONG_ACCEL_WITH_GAS_PRESSED);
 #else
   SAFETY_UNUSED(param);
 #endif
@@ -161,10 +160,10 @@ static bool volkswagen_mqb_tx_hook(const CANPacket_t *msg) {
       desired_accel = (((msg->data[7] << 3) | ((msg->data[6] & 0xE0U) >> 5)) * 5U) - 7220U;
     }
 
-    violation |= volkswagen_longitudinal_accel_checks(desired_accel, VOLKSWAGEN_MQB_LONG_LIMITS);
+    violation |= longitudinal_accel_checks(desired_accel, VOLKSWAGEN_MQB_LONG_LIMITS);
 
     if (violation) {
-      tx = true;
+      tx = false;
     }
   }
 

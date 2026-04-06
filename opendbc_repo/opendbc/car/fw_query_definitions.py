@@ -11,6 +11,7 @@ Ecu = CarParams.Ecu
 AddrType = tuple[int, int | None]
 EcuAddrBusType = tuple[int, int | None, int]
 EcuAddrSubAddr = tuple[Ecu, int, int | None]
+Mask = tuple[int, int]  # (mask, expected_value)
 
 LiveFwVersions = dict[AddrType, set[bytes]]
 OfflineFwVersions = dict[str, dict[EcuAddrSubAddr, list[bytes]]]
@@ -96,6 +97,8 @@ class Request:
   logging: bool = False
   # pandad toggles OBD multiplexing on/off as needed
   obd_multiplexing: bool = True
+  # can id filter (mask, expected_value)
+  filter_mask: list[Mask] = field(default_factory=list)
 
 
 @dataclass

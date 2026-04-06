@@ -184,6 +184,7 @@ struct CarState {
   brakeHoldActive @38 :Bool;
 
   # steering wheel
+  steeringCurvature @62 :Float32;  # EPS steering curvature equivalent in radiant
   steeringAngleDeg @7 :Float32;
   steeringAngleOffsetDeg @37 :Float32; # Offset between sensors in case there multiple
   steeringRateDeg @15 :Float32;    # optional
@@ -193,7 +194,6 @@ struct CarState {
   steeringDisengage @58 :Bool;     # more force than steeringPressed, disengages for applicable brands
   steerFaultTemporary @35 :Bool;
   steerFaultPermanent @36 :Bool;
-  steeringCurvature @64 :Float32;
 
   invalidLkasSetting @55 :Bool;    # stock LKAS is incorrectly configured (i.e. on or off)
   stockAeb @30 :Bool;
@@ -206,8 +206,7 @@ struct CarState {
   vehicleSensorsInvalid @52 :Bool;  # invalid steering angle readings, etc.
   lowSpeedAlert @56 :Bool;  # lost steering control due to a dynamic min steering speed
   blockPcmEnable @60 :Bool;  # whether to allow PCM to enable this frame
-  lateralAvailable @61 :Bool;        # lateral control is available even if cruise is faulted
-  cruiseFaultLateralMode @62 :Bool;  # cruise is faulted but lateral control is still active
+  radarDisableFailed @63 :Bool;
 
   # cruise state
   cruiseState @10 :CruiseState;
@@ -232,8 +231,9 @@ struct CarState {
 
   fuelGauge @41 :Float32; # battery or fuel tank level from [0.0, 1.0]
   charging @43 :Bool;
-  fuelTankLevelL @63 :Float32; # raw fuel tank level in liters (konn3kt: VW PQ Kombi_1.Tankinhalt)
-  batteryDetails @65 :BatteryDetails;
+
+  # battery data
+  batteryDetails @61 :BatteryDetails;
 
   struct BatteryDetails {
     capacity @0 :Float32;
@@ -244,7 +244,6 @@ struct CarState {
     voltage @5 :Float32;
     current @6 :Float32;
     power @7 :Float32;
-    chargingMode @8 :UInt8;
   }
 
   struct WheelSpeeds {
@@ -264,7 +263,6 @@ struct CarState {
     nonAdaptive @5 :Bool;
     speedLimit @7 :Float32;
     speedLimitPredicative @8 :Float32;
-
     speedOffsetDEPRECATED @3 :Float32;
   }
 
@@ -379,6 +377,7 @@ struct CarControl {
   steerLimited @20: Bool;
   forceRHDForBSM @21: Bool;
   longComfortMode @22: Bool;
+  disableCarSteerAlerts @23: Bool;
 
   cruiseControl @4 :CruiseControl;
   hudControl @5 :HUDControl;
@@ -413,8 +412,8 @@ struct CarControl {
     override @4: Bool;
     speedLimit @5: Bool;
     speedLimitPredicative @6: Bool;
-    speedLimitPredReactToSL @7: Bool;
-    speedLimitPredReactToCurves @8: Bool;
+	speedLimitPredReactToSL @7: Bool;
+	speedLimitPredReactToCurves @8: Bool;
     speedOverrideDEPRECATED @2: Float32;
     accelOverrideDEPRECATED @3: Float32;
   }
@@ -430,8 +429,8 @@ struct CarControl {
     rightLaneDepart @8: Bool;
     leftLaneDepart @9: Bool;
     leadDistanceBars @10: Int8;  # 1-3: 1 is closest, 3 is farthest. some ports may utilize 2-4 bars instead
-    leadFollowTime @11: Float32;
-    leadDistance @12: Float32;
+    leadFollowTime @ 11: Float32;
+    leadDistance @ 12: Float32;
 
     # not used with the dash, TODO: separate structs for dash UI and device UI
     audibleAlert @5: AudibleAlert;
@@ -544,6 +543,7 @@ struct CarParams {
   openpilotLongitudinalControl @37 :Bool; # is openpilot doing the longitudinal control?
   carVin @38 :Text; # VIN number queried during fingerprinting
   dashcamOnly @41: Bool;
+  dashcamOnlyReason @78 :DashcamOnlyReason; # optional specified dashcam only reason
   passive @73: Bool;   # is openpilot in control?
   transmissionType @43 :TransmissionType;
   carFw @44 :List(CarFw);
@@ -680,6 +680,11 @@ struct CarParams {
     manual @2;  # True "stick shift" only
     direct @3;  # Electric vehicle or other direct drive
     cvt @4;
+  }
+
+  enum DashcamOnlyReason {
+    unknown @0;
+    radarDisableEngineOn @1;  # Radar can not be disabled while engine on
   }
 
   struct CarFw {

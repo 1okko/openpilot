@@ -10,14 +10,14 @@ from opendbc.car.gm.radar_interface import RadarInterface, RADAR_HEADER_MSG, CAM
 from opendbc.car.gm.values import CAR, CarControllerParams, EV_CAR, CAMERA_ACC_CAR, SDGM_CAR, ALT_ACCS, CanBus, GMSafetyFlags
 from opendbc.car.interfaces import CarInterfaceBase, TorqueFromLateralAccelCallbackType, LateralAccelFromTorqueCallbackType
 
-from opendbc.iqpilot.car.gm.interface_ext import CarInterfaceExt
-from opendbc.iqpilot.car.gm.values_ext import GMFlagsIQ, GMSafetyFlagsIQ
+from opendbc.sunnypilot.car.gm.interface_ext import CarInterfaceExt
+from opendbc.sunnypilot.car.gm.values_ext import GMFlagsSP, GMSafetyFlagsSP
 
 TransmissionType = structs.CarParams.TransmissionType
 NetworkLocation = structs.CarParams.NetworkLocation
 
-# iqpilot-specific torque parameters for Bolt cars that actually use the d parameter
-NON_LINEAR_TORQUE_PARAMS_IQ = {
+# sunnypilot-specific torque parameters for Bolt cars that actually use the d parameter
+NON_LINEAR_TORQUE_PARAMS_SP = {
   CAR.CHEVROLET_BOLT_NON_ACC: [2.24, 1.1, 0.28, -0.07],
   CAR.CHEVROLET_BOLT_NON_ACC_1ST_GEN: [1.8, 1.1, 0.3, -0.045],
 }
@@ -26,7 +26,7 @@ NON_LINEAR_TORQUE_PARAMS = {
   CAR.CHEVROLET_BOLT_EUV: [2.6531724862969748, 1.0, 0.1919764879840985, 0.009054123646805178],
   CAR.GMC_ACADIA: [4.78003305, 1.0, 0.3122, 0.05591772],
   CAR.CHEVROLET_SILVERADO: [3.29974374, 1.0, 0.25571356, 0.0465122],
-  **NON_LINEAR_TORQUE_PARAMS_IQ,
+  **NON_LINEAR_TORQUE_PARAMS_SP,
 }
 
 
@@ -38,12 +38,12 @@ class CarInterface(CarInterfaceBase, CarInterfaceExt):
   DRIVABLE_GEARS = (structs.CarState.GearShifter.sport, structs.CarState.GearShifter.low,
                     structs.CarState.GearShifter.eco, structs.CarState.GearShifter.manumatic)
 
-  def __init__(self, CP, CP_IQ):
-    CarInterfaceBase.__init__(self, CP, CP_IQ)
+  def __init__(self, CP, CP_SP):
+    CarInterfaceBase.__init__(self, CP, CP_SP)
     CarInterfaceExt.__init__(self, CP, CarInterfaceBase)
 
   @staticmethod
-  def get_pid_accel_limits(CP, CP_IQ, current_speed, cruise_speed):
+  def get_pid_accel_limits(CP, CP_SP, current_speed, cruise_speed):
     return CarControllerParams.ACCEL_MIN, CarControllerParams.ACCEL_MAX
 
   # Determined by iteratively plotting and minimizing error for f(angle, speed) = steer.
@@ -68,7 +68,6 @@ class CarInterface(CarInterfaceBase, CarInterfaceExt):
       non_linear_torque_params = NON_LINEAR_TORQUE_PARAMS.get(self.CP.carFingerprint)
       assert non_linear_torque_params, "The params are not defined"
       a, b, c, d = non_linear_torque_params
-      d = d if NON_LINEAR_TORQUE_PARAMS_IQ.get(self.CP.carFingerprint) else 0.0
       sig_input = a * lateral_acceleration
       sig = np.sign(sig_input) * (1 / (1 + exp(-fabs(sig_input))) - 0.5)
       steer_torque = (sig * b) + (lateral_acceleration * c) + d
@@ -238,8 +237,8 @@ class CarInterface(CarInterfaceBase, CarInterfaceExt):
     return ret
 
   @staticmethod
-  def _get_params_iq(stock_cp: structs.CarParams, ret: structs.IQCarParams, candidate, fingerprint: dict[int, dict[int, int]],
-                     car_fw: list[structs.CarParams.CarFw], alpha_long: bool, is_release_iq: bool, docs: bool) -> structs.IQCarParams:
+  def _get_params_sp(stock_cp: structs.CarParams, ret: structs.CarParamsSP, candidate, fingerprint: dict[int, dict[int, int]],
+                     car_fw: list[structs.CarParams.CarFw], alpha_long: bool, is_release_sp: bool, docs: bool) -> structs.CarParamsSP:
     if candidate in (CAR.CHEVROLET_MALIBU_NON_ACC_9TH_GEN, CAR.CHEVROLET_BOLT_NON_ACC, CAR.CHEVROLET_BOLT_NON_ACC_1ST_GEN,
                      CAR.CHEVROLET_BOLT_NON_ACC_2ND_GEN, CAR.CHEVROLET_TRAILBLAZER_NON_ACC_2ND_GEN):
       stock_cp.steerActuatorDelay = 0.2
@@ -249,21 +248,20 @@ class CarInterface(CarInterfaceBase, CarInterfaceExt):
       CarInterfaceBase.configure_torque_tune(candidate, stock_cp.lateralTuning)
 
     # NON_ACC vehicles should use camera car speed thresholds
-    if ret.flags & GMFlagsIQ.NON_ACC:
+    if ret.flags & GMFlagsSP.NON_ACC:
       stock_cp.dashcamOnly = False
       stock_cp.alphaLongitudinalAvailable = False
       stock_cp.networkLocation = NetworkLocation.fwdCamera
       stock_cp.openpilotLongitudinalControl = False
       stock_cp.pcmCruise = True
       stock_cp.safetyConfigs[0].safetyParam |= GMSafetyFlags.HW_CAM.value
-      ret.safetyParam |= GMSafetyFlagsIQ.NON_ACC
+      ret.safetyParam |= GMSafetyFlagsSP.NON_ACC
       stock_cp.minEnableSpeed = 24 * CV.MPH_TO_MS  # 24 mph
       stock_cp.minSteerSpeed = 3.0   # ~6 mph
 
     # dashcamOnly platforms: untested platforms, need user validations
-    if candidate in (CAR.CHEVROLET_BOLT_NON_ACC_2ND_GEN, CAR.CHEVROLET_EQUINOX_NON_ACC_3RD_GEN,
-                     CAR.CHEVROLET_SUBURBAN_NON_ACC_11TH_GEN, CAR.CADILLAC_CT6_NON_ACC_1ST_GEN, CAR.CHEVROLET_TRAILBLAZER_NON_ACC_2ND_GEN,
-                     CAR.CADILLAC_XT5_NON_ACC_1ST_GEN):
+    if candidate in (CAR.CHEVROLET_SUBURBAN_NON_ACC_11TH_GEN, CAR.CADILLAC_CT6_NON_ACC_1ST_GEN,
+                     CAR.CHEVROLET_TRAILBLAZER_NON_ACC_2ND_GEN, CAR.CADILLAC_XT5_NON_ACC_1ST_GEN):
       stock_cp.dashcamOnly = True
 
     return ret

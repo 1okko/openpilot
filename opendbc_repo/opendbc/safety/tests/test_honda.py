@@ -9,7 +9,7 @@ from opendbc.car.structs import CarParams
 from opendbc.safety.tests.common import CANPackerSafety, MAX_WRONG_COUNTERS
 from opendbc.safety.tests.gas_interceptor_common import GasInterceptorSafetyTest
 
-from opendbc.iqpilot.car.honda.values_ext import HondaSafetyFlagsIQ
+from opendbc.sunnypilot.car.honda.values_ext import HondaSafetyFlagsSP
 
 HONDA_N_COMMON_TX_MSGS = [[0xE4, 0], [0x194, 0], [0x1FA, 0], [0x30C, 0], [0x33D, 0]]
 
@@ -247,38 +247,38 @@ class HondaBase(common.CarSafetyTest):
     self.__class__.cnt_button += 1
     return self.packer.make_can_msg_safety("SCM_BUTTONS", self.PT_BUS, values)
 
-  def test_enable_control_allowed_with_aol_button(self):
-    """Tests AOL button state transitions and internal button press state."""
-    for enable_aol in (True, False):
-      with self.subTest("enable_aol", aol_enabled=enable_aol):
-        self.safety.set_aol_params(enable_aol, False, False)
+  def test_enable_control_allowed_with_mads_button(self):
+    """Tests MADS button state transitions and internal button press state."""
+    for enable_mads in (True, False):
+      with self.subTest("enable_mads", mads_enabled=enable_mads):
+        self.safety.set_mads_params(enable_mads, False, False)
 
         # Verify initial state
         self._rx(self._lkas_button_msg(False, 0))
-        self.assertEqual(0, self.safety.get_aol_button_press())  # NOT_PRESSED
+        self.assertEqual(0, self.safety.get_mads_button_press())  # NOT_PRESSED
         self.assertFalse(self.safety.get_controls_allowed_lat())
 
         # Verify press sets correct internal state
         self._rx(self._lkas_button_msg(False, 1))
-        self.assertEqual(1, self.safety.get_aol_button_press())  # PRESSED
-        self.assertEqual(enable_aol, self.safety.get_controls_allowed_lat())
+        self.assertEqual(1, self.safety.get_mads_button_press())  # PRESSED
+        self.assertEqual(enable_mads, self.safety.get_controls_allowed_lat())
 
         # Verify release sets correct internal state
         self._rx(self._lkas_button_msg(False, 0))
-        self.assertEqual(0, self.safety.get_aol_button_press())  # NOT_PRESSED
-        self.assertEqual(enable_aol, self.safety.get_controls_allowed_lat())
+        self.assertEqual(0, self.safety.get_mads_button_press())  # NOT_PRESSED
+        self.assertEqual(enable_mads, self.safety.get_controls_allowed_lat())
 
         # Test invalid values - should not change button press state
         for invalid_setting in (2, 3):
           self._rx(self._lkas_button_msg(False, invalid_setting))
-          self.assertEqual(0, self.safety.get_aol_button_press())  # Should remain NOT_PRESSED
-          self.assertEqual(enable_aol, self.safety.get_controls_allowed_lat())
+          self.assertEqual(0, self.safety.get_mads_button_press())  # Should remain NOT_PRESSED
+          self.assertEqual(enable_mads, self.safety.get_controls_allowed_lat())
 
         # Verify we can still transition after invalid values
         self._rx(self._lkas_button_msg(False, 1))
-        self.assertEqual(1, self.safety.get_aol_button_press())
+        self.assertEqual(1, self.safety.get_mads_button_press())
         self._rx(self._lkas_button_msg(False, 0))
-        self.assertEqual(0, self.safety.get_aol_button_press())
+        self.assertEqual(0, self.safety.get_mads_button_press())
 
 
 # ********************* Honda Nidec **********************
@@ -394,7 +394,7 @@ class TestHondaNidecGasInterceptorSafety(GasInterceptorSafetyTest, HondaButtonEn
   def setUp(self):
     self.packer = CANPackerSafety("honda_civic_touring_2016_can_generated")
     self.safety = libsafety_py.libsafety
-    self.safety.set_current_safety_param_iq(HondaSafetyFlagsIQ.GAS_INTERCEPTOR)
+    self.safety.set_current_safety_param_sp(HondaSafetyFlagsSP.GAS_INTERCEPTOR)
     self.safety.set_safety_hooks(CarParams.SafetyModel.hondaNidec, 0)
     self.safety.init_tests()
 
@@ -432,7 +432,7 @@ class TestHondaNidecAltGasInterceptorSafety(GasInterceptorSafetyTest, HondaButto
   def setUp(self):
     self.packer = CANPackerSafety("acura_ilx_2016_can_generated")
     self.safety = libsafety_py.libsafety
-    self.safety.set_current_safety_param_iq(HondaSafetyFlagsIQ.GAS_INTERCEPTOR)
+    self.safety.set_current_safety_param_sp(HondaSafetyFlagsSP.GAS_INTERCEPTOR)
     self.safety.set_safety_hooks(CarParams.SafetyModel.hondaNidec, HondaSafetyFlags.NIDEC_ALT)
     self.safety.init_tests()
 
@@ -696,7 +696,7 @@ class TestHondaNidecHybridSafety(TestHondaNidecPcmSafety):
   def setUp(self):
     self.packer = CANPackerSafety("honda_clarity_hybrid_2018_can_generated")
     self.safety = libsafety_py.libsafety
-    self.safety.set_current_safety_param_iq(HondaSafetyFlagsIQ.NIDEC_HYBRID)
+    self.safety.set_current_safety_param_sp(HondaSafetyFlagsSP.NIDEC_HYBRID)
     self.safety.set_safety_hooks(CarParams.SafetyModel.hondaNidec, 0)
     self.safety.init_tests()
 

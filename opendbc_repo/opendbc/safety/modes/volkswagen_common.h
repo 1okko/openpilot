@@ -1,33 +1,29 @@
 #pragma once
 
 extern const uint16_t FLAG_VOLKSWAGEN_LONG_CONTROL;
-const uint16_t FLAG_VOLKSWAGEN_LONG_CONTROL = 1;
 extern const uint16_t FLAG_VOLKSWAGEN_ALT_CRC_VARIANT_1;
+extern const uint16_t FLAG_VOLKSWAGEN_DISABLE_RADAR;
+
+const uint16_t FLAG_VOLKSWAGEN_LONG_CONTROL = 1;
 const uint16_t FLAG_VOLKSWAGEN_ALT_CRC_VARIANT_1 = 2;
-extern const uint16_t FLAG_VOLKSWAGEN_NO_GAS_OFFSET;
-const uint16_t FLAG_VOLKSWAGEN_NO_GAS_OFFSET = 4;
-extern const uint16_t FLAG_VOLKSWAGEN_ALLOW_LONG_ACCEL_WITH_GAS_PRESSED;
-const uint16_t FLAG_VOLKSWAGEN_ALLOW_LONG_ACCEL_WITH_GAS_PRESSED = 8;
+const uint16_t FLAG_VOLKSWAGEN_DISABLE_RADAR = 8;
 
 static uint8_t volkswagen_crc8_lut_8h2f[256]; // Static lookup table for CRC8 poly 0x2F, aka 8H2F/AUTOSAR
 
 extern bool volkswagen_longitudinal;
 bool volkswagen_longitudinal = false;
 
-extern bool volkswagen_alt_crc_variant_1;
-bool volkswagen_alt_crc_variant_1 = false;
-
-extern bool volkswagen_no_gas_offset;
-bool volkswagen_no_gas_offset = false;
-
-extern bool volkswagen_allow_long_accel_with_gas_pressed;
-bool volkswagen_allow_long_accel_with_gas_pressed = false;
+extern bool volkswagen_disable_radar;
+bool volkswagen_disable_radar = false;
 
 extern bool volkswagen_set_button_prev;
 bool volkswagen_set_button_prev = false;
 
 extern bool volkswagen_resume_button_prev;
 bool volkswagen_resume_button_prev = false;
+
+extern bool volkswagen_alt_crc_variant_1;
+bool volkswagen_alt_crc_variant_1 = false;
 
 extern bool volkswagen_brake_pedal_switch;
 extern bool volkswagen_brake_pressure_detected;
@@ -53,26 +49,14 @@ bool volkswagen_brake_pressure_detected = false;
 #define MSG_MOTOR_03    0x105U   // RX from ECU, for driver throttle input and brake switch status
 #define MSG_TSK_02      0x10CU   // RX from ECU, for ACC status from drivetrain coordinator
 #define MSG_ACC_05      0x10DU   // RX from radar, for ACC status
-#define MSG_ACC_01      0x109U   // RX from radar, for ACC status (Audi B8)
 
 static void volkswagen_common_init(void) {
   volkswagen_set_button_prev = false;
   volkswagen_resume_button_prev = false;
   volkswagen_brake_pedal_switch = false;
   volkswagen_brake_pressure_detected = false;
-  volkswagen_alt_crc_variant_1 = false;
-  volkswagen_no_gas_offset = false;
-  volkswagen_allow_long_accel_with_gas_pressed = false;
   gen_crc_lookup_table_8(0x2F, volkswagen_crc8_lut_8h2f);
   return;
-}
-
-bool volkswagen_longitudinal_accel_checks(int desired_accel, const LongitudinalLimits limits) {
-  bool accel_valid = controls_allowed &&
-                     (volkswagen_allow_long_accel_with_gas_pressed || !gas_pressed_prev) &&
-                     !safety_max_limit_check(desired_accel, limits.max_accel, limits.min_accel);
-  bool accel_inactive = desired_accel == limits.inactive_accel;
-  return !(accel_valid || accel_inactive);
 }
 
 static uint32_t volkswagen_mqb_meb_get_checksum(const CANPacket_t *msg) {

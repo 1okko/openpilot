@@ -134,9 +134,9 @@ static void honda_rx_hook(const CANPacket_t *msg) {
 
     int cruise_setting = (msg->data[(msg->addr == 0x296U) ? 0U : 5U] & 0x0CU) >> 2U;
     if (cruise_setting == 1) {
-      aol_button_press = AOL_BUTTON_PRESSED;
+      mads_button_press = MADS_BUTTON_PRESSED;
     } else if (cruise_setting == 0) {
-      aol_button_press = AOL_BUTTON_NOT_PRESSED;
+      mads_button_press = MADS_BUTTON_NOT_PRESSED;
     } else {
     }
 
@@ -296,7 +296,7 @@ static bool honda_tx_hook(const CANPacket_t *msg) {
 
   // STEER: safety check
   if ((msg->addr == 0xE4U) || (msg->addr == 0x194U)) {
-    if (!(controls_allowed || aol_is_lateral_control_allowed_by_aol())) {
+    if (!(controls_allowed || mads_is_lateral_control_allowed_by_mads())) {
       bool steer_applied = msg->data[0] | msg->data[1];
       if (steer_applied) {
         tx = false;
@@ -350,7 +350,7 @@ static safety_config honda_nidec_init(uint16_t param) {
 
   const uint16_t HONDA_PARAM_NIDEC_ALT = 4;
 
-  const uint16_t HONDA_PARAM_IQ_NIDEC_HYBRID = 1;
+  const uint16_t HONDA_PARAM_SP_NIDEC_HYBRID = 1;
   const uint16_t HONDA_PARAM_GAS_INTERCEPTOR = 2;
 
   honda_hw = HONDA_NIDEC;
@@ -366,8 +366,8 @@ static safety_config honda_nidec_init(uint16_t param) {
 
   bool enable_nidec_alt = GET_FLAG(param, HONDA_PARAM_NIDEC_ALT);
 
-  honda_nidec_hybrid = GET_FLAG(current_safety_param_iq, HONDA_PARAM_IQ_NIDEC_HYBRID);
-  enable_gas_interceptor = GET_FLAG(current_safety_param_iq, HONDA_PARAM_GAS_INTERCEPTOR);
+  honda_nidec_hybrid = GET_FLAG(current_safety_param_sp, HONDA_PARAM_SP_NIDEC_HYBRID);
+  enable_gas_interceptor = GET_FLAG(current_safety_param_sp, HONDA_PARAM_GAS_INTERCEPTOR);
 
   if (enable_nidec_alt) {
     // For Nidecs with main on signal on an alternate msg (missing 0x326)

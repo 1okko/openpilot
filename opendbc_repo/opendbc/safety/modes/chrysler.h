@@ -130,12 +130,12 @@ static void chrysler_rx_hook(const CANPacket_t *msg) {
   }
 
   if ((chrysler_platform == CHRYSLER_PACIFICA) && (msg->bus == 0U) && (msg->addr == CHRYSLER_ADDR(TRACTION_BUTTON))) {
-    aol_button_press = GET_BIT(msg, 53U) ? AOL_BUTTON_PRESSED : AOL_BUTTON_NOT_PRESSED;
+    mads_button_press = GET_BIT(msg, 53U) ? MADS_BUTTON_PRESSED : MADS_BUTTON_NOT_PRESSED;
   }
 
   if ((chrysler_platform != CHRYSLER_PACIFICA) && (msg->bus == 0U)) {
     if (msg->addr == CHRYSLER_ADDR(Center_Stack_2)) {
-      aol_button_press = GET_BIT(msg, 57U) ? AOL_BUTTON_PRESSED : AOL_BUTTON_NOT_PRESSED;
+      mads_button_press = GET_BIT(msg, 57U) ? MADS_BUTTON_PRESSED : MADS_BUTTON_NOT_PRESSED;
     }
   }
 }

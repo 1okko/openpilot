@@ -3,7 +3,7 @@ from opendbc.car.interfaces import CarInterfaceBase
 from opendbc.car.nissan.carcontroller import CarController
 from opendbc.car.nissan.carstate import CarState
 from opendbc.car.nissan.values import CAR, NissanSafetyFlags
-from opendbc.iqpilot.car.nissan.values import NissanSafetyFlagsIQ
+from opendbc.sunnypilot.car.nissan.values import NissanSafetyFlagsSP
 
 class CarInterface(CarInterfaceBase):
   CarState = CarState
@@ -32,9 +32,9 @@ class CarInterface(CarInterfaceBase):
     return ret
 
   @staticmethod
-  def _get_params_iq(stock_cp: structs.CarParams, ret: structs.IQCarParams, candidate, fingerprint: dict[int, dict[int, int]],
-                     car_fw: list[structs.CarParams.CarFw], alpha_long: bool, is_release_iq: bool, docs: bool) -> structs.IQCarParams:
+  def _get_params_sp(stock_cp: structs.CarParams, ret: structs.CarParamsSP, candidate, fingerprint: dict[int, dict[int, int]],
+                     car_fw: list[structs.CarParams.CarFw], alpha_long: bool, is_release_sp: bool, docs: bool) -> structs.CarParamsSP:
     if candidate in (CAR.NISSAN_LEAF, CAR.NISSAN_LEAF_IC):
-      ret.safetyParam |= NissanSafetyFlagsIQ.LEAF
+      ret.safetyParam |= NissanSafetyFlagsSP.LEAF
 
     return ret

@@ -35,13 +35,13 @@
 |Cadillac|CT6 Non-ACC 2017-18|No Adaptive Cruise Control (Non-ACC)|[Dashcam mode](#dashcam)|
 |Cadillac|XT5 Non-ACC 2018|No Adaptive Cruise Control (Non-ACC)|[Dashcam mode](#dashcam)|
 |Chevrolet|Bolt EUV 2022-23|Premier or Premier Redline Trim, without Super Cruise Package|[Upstream](#upstream)|
-|Chevrolet|Bolt EUV LT Non-ACC 2022-23|No Adaptive Cruise Control (Non-ACC)|[Dashcam mode](#dashcam)|
+|Chevrolet|Bolt EUV LT Non-ACC 2022-23|No Adaptive Cruise Control (Non-ACC)|[Community](community)|
 |Chevrolet|Bolt EV 2022-23|2LT Trim with Adaptive Cruise Control Package|[Upstream](#upstream)|
-|Chevrolet|Bolt EV LT Non-ACC 2022-23|No Adaptive Cruise Control (Non-ACC)|[Dashcam mode](#dashcam)|
+|Chevrolet|Bolt EV LT Non-ACC 2022-23|No Adaptive Cruise Control (Non-ACC)|[Community](community)|
 |Chevrolet|Bolt EV Non-ACC 2017|No Adaptive Cruise Control (Non-ACC)|[Community](community)|
 |Chevrolet|Bolt EV Non-ACC 2018-21|No Adaptive Cruise Control (Non-ACC)|[Community](community)|
 |Chevrolet|Equinox 2019-22|Adaptive Cruise Control (ACC)|[Upstream](#upstream)|
-|Chevrolet|Equinox Non-ACC 2019-22|No Adaptive Cruise Control (Non-ACC)|[Dashcam mode](#dashcam)|
+|Chevrolet|Equinox Non-ACC 2019-22|No Adaptive Cruise Control (Non-ACC)|[Community](community)|
 |Chevrolet|Malibu Non-ACC 2016-23|No Adaptive Cruise Control (Non-ACC)|[Community](community)|
 |Chevrolet|Silverado 1500 2020-21|Safety Package II|[Upstream](#upstream)|
 |Chevrolet|Suburban Non-ACC 2016-20|No Adaptive Cruise Control (Non-ACC)|[Dashcam mode](#dashcam)|
@@ -427,6 +427,13 @@ support comes from users like you!
 A supported vehicle is one that just works when you install a comma device. All supported cars provide a better
 experience than any stock system. Supported vehicles reference the US market unless otherwise specified.
 
+## Under Review
+
+A vehicle under review is one for which software support has been merged into upstream openpilot, but hasn't yet been
+tested for drive quality and conformance with [comma safety guidelines](https://github.com/commaai/openpilot/blob/master/docs/SAFETY.md).
+This is a normal part of the development and quality assurance process. This vehicle will not work when upstream
+openpilot is installed, but custom forks may allow their use.
+
 ## Custom
 
 Vehicles in this category are not considered plug-and-play. Software support is included in upstream openpilot, but
@@ -439,3 +446,35 @@ openpilot, but depending on the situation, development builds or custom forks ma
 For a small subset of SecOC-protected vehicles, tools may be available in the community to recover the SecOC keys. These
 tools, and the recovery process, are not part of openpilot. If supplied with a valid SecOC key, development builds or
 custom forks may work with these vehicles. Release builds of openpilot don't support SecOC.
+
+## Dashcam
+
+Dashcam vehicles have software support in upstream openpilot, but will go into "dashcam mode" at startup and will not
+engage. This may be due to known issues with driving safety or quality, or it may be a work in progress that isn't yet
+ready for safety and quality review.
+
+## Community
+
+Although they're not upstream, the community has openpilot running on other makes and models. See the 'Community
+Supported Models' section of each make [on our wiki](https://wiki.comma.ai/).
+
+Some notable works-in-progress:
+* Honda
+  * 2022-24 Acura RDX, commaai/opendbc#1967
+  * Camera ACC stability improvements, commaai/opendbc#2192
+  * Alpha longitudinal stability improvements, commaai/opendbc#2347 and commaai/opendbc#2165
+
+## Incompatible
+
+### CAN Bus Security
+
+Vehicles with CAN security measures, such as AUTOSAR Secure Onboard Communication (SecOC) are not usable with openpilot
+unless the owner can recover the message signing key and implement CAN message signing. Examples include certain newer
+Toyota, and the GM Global B platform.
+
+### FlexRay
+
+All the cars that openpilot supports use a [CAN bus](https://en.wikipedia.org/wiki/CAN_bus) for communication between all the car's computers, however a
+CAN bus isn't the only way that the computers in your car can communicate. Most, if not all, vehicles from the following
+manufacturers use [FlexRay](https://en.wikipedia.org/wiki/FlexRay) instead of a CAN bus: **BMW, Mercedes, Audi, Land Rover, and some Volvo**. These cars
+may one day be supported, but we have no immediate plans to support FlexRay.

@@ -5,7 +5,11 @@
 
 static bool elm327_tx_hook(const CANPacket_t *msg) {
   const unsigned int GM_CAMERA_DIAG_ADDR = 0x24BU;
-
+  
+  // VW diag ranges (29-bit)
+  const unsigned int VW_DIAG_29B_MASK  = 0x1FFFFF00U;
+  const unsigned int VW_DIAG_17FC_BASE = 0x17FC0000U;  // TX to ECU (RX at 0x17FE00NN)
+ 
   bool tx = true;
   int len = GET_LEN(msg);
 
@@ -17,7 +21,8 @@ static bool elm327_tx_hook(const CANPacket_t *msg) {
   // Check valid 29 bit send addresses for ISO 15765-4
   // Check valid 11 bit send addresses for ISO 15765-4
   if ((msg->addr != 0x18DB33F1U) && ((msg->addr & 0x1FFF00FFU) != 0x18DA00F1U) &&
-      ((msg->addr & 0x1FFFFF00U) != 0x600U) && ((msg->addr & 0x1FFFFF00U) != 0x700U) &&
+      ((msg->addr & VW_DIAG_29B_MASK) != VW_DIAG_17FC_BASE) &&
+	  ((msg->addr & 0x1FFFFF00U) != 0x600U) && ((msg->addr & 0x1FFFFF00U) != 0x700U) &&
       (msg->addr != GM_CAMERA_DIAG_ADDR)) {
     tx = false;
   }
@@ -29,6 +34,16 @@ static bool elm327_tx_hook(const CANPacket_t *msg) {
       tx = false;
     }
   }
+  
+  // VW additionally uses custom diagnostic address range
+  if ((msg->addr & VW_DIAG_29B_MASK) == VW_DIAG_17FC_BASE) {
+	// allow typical diagnostic request frames 
+    uint8_t req = msg->data[0] & 0xF0U;
+    if ((req != 0x00U) && (req != 0x10U) && (req != 0x20U) && (req != 0x30U)) {
+      tx = false;
+    }
+  }
+  
   return tx;
 }
 

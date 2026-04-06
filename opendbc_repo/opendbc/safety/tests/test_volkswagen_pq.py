@@ -17,7 +17,6 @@ MSG_GRA_NEU = 0x38A           # TX by OP, ACC control buttons for cancel/resume
 MSG_MOTOR_5 = 0x480           # RX from ECU, for ACC main switch state
 MSG_ACC_GRA_ANZEIGE = 0x56A   # TX by OP, ACC HUD
 MSG_LDW_1 = 0x5BE             # TX by OP, Lane line recognition and text alerts
-MSG_BLINKMODI_02 = 0x0AA      # TX by OP, turn signal control
 
 
 class TestVolkswagenPqSafetyBase(common.CarSafetyTest, common.DriverTorqueSteeringSafetyTest):
@@ -111,8 +110,9 @@ class TestVolkswagenPqSafetyBase(common.CarSafetyTest, common.DriverTorqueSteeri
 
 
 class TestVolkswagenPqStockSafety(TestVolkswagenPqSafetyBase):
-  # Transmit of GRA_Neu is allowed on bus 0/1/2 to keep compatibility with gateway and camera integration
-  TX_MSGS = [[MSG_HCA_1, 0], [MSG_GRA_NEU, 0], [MSG_GRA_NEU, 1], [MSG_GRA_NEU, 2], [MSG_LDW_1, 0], [MSG_BLINKMODI_02, 0]]
+  # Transmit of GRA_Neu is allowed on bus 0, 1 and 2 to keep compatibility with gateway and camera integration
+  TX_MSGS = [[MSG_HCA_1, 0], [MSG_GRA_NEU, 0], [MSG_GRA_NEU, 1], [MSG_GRA_NEU, 2], [MSG_LDW_1, 0]]
+  RELAY_MALFUNCTION_ADDRS = {0: (MSG_HCA_1, MSG_LDW_1)}
   FWD_BLACKLISTED_ADDRS = {2: [MSG_HCA_1, MSG_LDW_1]}
 
   def setUp(self):
@@ -132,29 +132,30 @@ class TestVolkswagenPqStockSafety(TestVolkswagenPqSafetyBase):
 
 
 class TestVolkswagenPqLongSafety(TestVolkswagenPqSafetyBase, common.LongitudinalAccelSafetyTest):
-  TX_MSGS = [[MSG_HCA_1, 0], [MSG_LDW_1, 0], [MSG_ACC_SYSTEM, 0], [MSG_ACC_GRA_ANZEIGE, 0], [MSG_BLINKMODI_02, 0], [MSG_MOTOR_2, 2]]
-  FWD_BLACKLISTED_ADDRS = {0: [MSG_MOTOR_2],
-                           2: [MSG_HCA_1, MSG_LDW_1, MSG_ACC_SYSTEM, MSG_ACC_GRA_ANZEIGE]}
-  RELAY_MALFUNCTION_ADDRS = {0: (MSG_HCA_1, MSG_LDW_1, MSG_ACC_SYSTEM, MSG_ACC_GRA_ANZEIGE),
-                             2: (MSG_MOTOR_2,)}
+  # Transmit of GRA_Neu is allowed on bus 0, 1 and 2 under long control as well
+  TX_MSGS = [[MSG_HCA_1, 0], [MSG_LDW_1, 0],
+             [MSG_ACC_SYSTEM, 0], [MSG_ACC_GRA_ANZEIGE, 0]]
+  RELAY_MALFUNCTION_ADDRS = {0: (MSG_HCA_1, MSG_LDW_1, MSG_ACC_SYSTEM, MSG_ACC_GRA_ANZEIGE)}
+  FWD_BLACKLISTED_ADDRS = {2: [MSG_HCA_1, MSG_LDW_1, MSG_ACC_SYSTEM, MSG_ACC_GRA_ANZEIGE]}
   INACTIVE_ACCEL = 3.01
 
   def setUp(self):
     self.packer = CANPackerSafety("vw_pq")
     self.safety = libsafety_py.libsafety
-    safety_param = VolkswagenSafetyFlags.LONG_CONTROL | VolkswagenSafetyFlags.ALLOW_LONG_ACCEL_WITH_GAS_PRESSED
-    self.safety.set_safety_hooks(CarParams.SafetyModel.volkswagenPq, safety_param)
+    self.safety.set_safety_hooks(CarParams.SafetyModel.volkswagenPq, VolkswagenSafetyFlags.LONG_CONTROL)
     self.safety.init_tests()
 
   # stock cruise controls are entirely bypassed under openpilot longitudinal control
-  def test_disable_control_allowed_from_cruise(self):
-    pass
+  def test_disable_control_allowed_from_cruise(self): pass
+  def test_enable_control_allowed_from_cruise(self): pass
+  def test_cruise_engaged_prev(self): pass
 
-  def test_enable_control_allowed_from_cruise(self):
-    pass
-
-  def test_cruise_engaged_prev(self):
-    pass
+  # override tests that do not apply to PQ safety
+  def test_allow_engage_with_gas_pressed(self): pass
+  def test_no_disengage_on_gas(self): pass
+  def test_not_allow_user_brake_when_moving(self): pass
+  def test_allow_user_brake_at_zero_speed(self): pass
+  def test_enable_lateral_control_with_controls_allowed_rising_edge(self): pass
 
   def test_set_and_resume_buttons(self):
     for button in ["set", "resume"]:
@@ -190,11 +191,6 @@ class TestVolkswagenPqLongSafety(TestVolkswagenPqSafetyBase, common.Longitudinal
     for enabled_status in (5, 7):
       self.assertTrue(self._tx(self._torque_cmd_msg(self.MAX_RATE_UP, steer_req=1, hca_status=enabled_status)),
                       f"torque cmd rejected with {enabled_status=}")
-
-  def test_accel_allowed_with_gas_pressed(self):
-    self._rx(self._user_gas_msg(1))
-    self.safety.set_controls_allowed(True)
-    self.assertTrue(self._tx(self._accel_msg(0.5)))
 
 
 if __name__ == "__main__":

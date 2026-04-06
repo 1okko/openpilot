@@ -241,8 +241,8 @@ static safety_config gm_init(uint16_t param) {
 #endif
   gm_pcm_cruise = (gm_hw == GM_CAM) && !gm_cam_long;
 
-  const uint16_t GM_PARAM_IQ_NON_ACC = 1;
-  gm_non_acc = GET_FLAG(current_safety_param_iq, GM_PARAM_IQ_NON_ACC);
+  const uint16_t GM_PARAM_SP_NON_ACC = 1;
+  gm_non_acc = GET_FLAG(current_safety_param_sp, GM_PARAM_SP_NON_ACC);
 
   safety_config ret;
   if (gm_hw == GM_CAM) {

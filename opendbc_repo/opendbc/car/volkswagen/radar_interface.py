@@ -1,7 +1,6 @@
 import math
 
 from opendbc.can import CANParser
-from opendbc.can.dbc import DBC as DBCLoader
 from opendbc.car import Bus, structs
 from opendbc.car.interfaces import RadarInterfaceBase
 from opendbc.car.common.conversions import Conversions as CV
@@ -24,15 +23,8 @@ SIGNAL_SETS = tuple(
 
 
 def get_radar_can_parser(CP):
-  if CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
-    dbc_name = DBC[CP.carFingerprint][Bus.radar]
-    dbc = DBCLoader(dbc_name)
-    if "Strukturen_01" in dbc.name_to_msg:
-      messages = [("Strukturen_01", 25)]
-    elif "MEB_Distance_01" in dbc.name_to_msg:
-      messages = [("MEB_Distance_01", 25)]
-    else:
-      return None
+  if CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO) and not (CP.flags & (VolkswagenFlags.DISABLE_RADAR | VolkswagenFlags.MQB_EVO_GEN2)):
+    messages = [("Strukturen_01", 25)]
   else:
     return None
 
@@ -53,7 +45,7 @@ class RadarInterface(RadarInterfaceBase):
     self._pts = self.pts
 
   def update(self, can_strings):
-    """Entry-point called by the vehicle loop every CAN tick."""
+    """Entry‑point called by the vehicle loop every CAN tick."""
     if self.radar_off_can or self.rcp is None:
       return super().update(None)
 
@@ -77,7 +69,7 @@ class RadarInterface(RadarInterfaceBase):
       ret.errors.canError = True
       return ret
 
-    msg = self.rcp.vl["Strukturen_01"] if "Strukturen_01" in self.rcp.vl else self.rcp.vl["MEB_Distance_01"]
+    msg = self.rcp.vl["Strukturen_01"]
     get = msg.__getitem__
 
     active_objects: dict[int, tuple[float, float, float]] = {}

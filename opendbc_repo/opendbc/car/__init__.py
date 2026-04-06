@@ -12,7 +12,6 @@ DT_CTRL = 0.01  # car state and control loop timestep (s)
 
 # kg of standard extra cargo to count for drive, gas, etc...
 STD_CARGO_KG = 136.
-
 ACCELERATION_DUE_TO_GRAVITY = 9.81  # m/s^2
 
 ButtonType = structs.CarState.ButtonEvent.Type
@@ -80,7 +79,6 @@ DbcDict = dict[StrEnum, str]
 
 class Bus(StrEnum):
   pt = auto()
-  aux = auto()
   cam = auto()
   radar = auto()
   adas = auto()
@@ -181,7 +179,7 @@ class PlatformConfigBase(Freezable):
   dbc_dict: DbcDict
 
   flags: int = 0
-  iq_flags: int = 0
+  sp_flags: int = 0
 
   platform_str: str | None = None
 
@@ -248,5 +246,5 @@ class Platforms(str, ReprEnum, metaclass=PlatformsType):
     return {p for p in cls if p.config.flags & flags}
 
   @classmethod
-  def with_iq_flags(cls, iq_flags: IntFlag) -> set['Platforms']:
-    return {p for p in cls if p.config.iq_flags & iq_flags}
+  def with_sp_flags(cls, sp_flags: IntFlag) -> set['Platforms']:
+    return {p for p in cls if p.config.sp_flags & sp_flags}

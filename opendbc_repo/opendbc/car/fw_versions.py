@@ -10,7 +10,7 @@ from opendbc.car.carlog import carlog
 from opendbc.car.structs import CarParams
 from opendbc.car.ecu_addrs import get_ecu_addrs
 from opendbc.car.fingerprints import FW_VERSIONS
-from opendbc.car.fw_query_definitions import ESSENTIAL_ECUS, AddrType, EcuAddrBusType, FwQueryConfig, LiveFwVersions, OfflineFwVersions
+from opendbc.car.fw_query_definitions import ESSENTIAL_ECUS, AddrType, EcuAddrBusType, FwQueryConfig, LiveFwVersions, OfflineFwVersions, Mask
 from opendbc.car.interfaces import get_interface_attr
 from opendbc.car.isotp_parallel_query import IsoTpParallelQuery
 
@@ -26,6 +26,15 @@ REQUESTS = [(brand, config, r) for brand, config in FW_QUERY_CONFIGS.items() for
 T = TypeVar('T')
 ObdCallback = Callable[[bool], None]
 
+
+def addr_matches_masks(addr: int, masks: list[Mask]) -> bool:
+  if not masks:
+    return True
+  for m, expected in masks:
+    if (addr & m) == expected:
+      return True
+  return False
+  
 
 def chunks(l: list[T], n: int = 128) -> Iterator[list[T]]:
   for i in range(0, len(l), n):

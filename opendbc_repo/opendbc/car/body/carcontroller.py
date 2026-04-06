@@ -15,8 +15,8 @@ MAX_TURN_INTEGRATOR = 0.1  # meters
 
 
 class CarController(CarControllerBase):
-  def __init__(self, dbc_names, CP, CP_IQ):
-    super().__init__(dbc_names, CP, CP_IQ)
+  def __init__(self, dbc_names, CP, CP_SP):
+    super().__init__(dbc_names, CP, CP_SP)
     self.packer = CANPacker(dbc_names[Bus.main])
 
     # PIDs
@@ -34,7 +34,7 @@ class CarController(CarControllerBase):
       torque -= deadband
     return torque
 
-  def update(self, CC, CC_IQ, CS, now_nanos):
+  def update(self, CC, CC_SP, CS, now_nanos):
 
     torque_l = 0
     torque_r = 0

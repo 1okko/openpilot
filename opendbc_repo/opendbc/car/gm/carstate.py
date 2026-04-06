@@ -5,8 +5,8 @@ from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.interfaces import CarStateBase
 from opendbc.car.gm.values import DBC, AccState, CruiseButtons, STEER_THRESHOLD, SDGM_CAR, ALT_ACCS
 
-from opendbc.iqpilot.car.gm.carstate_ext import CarStateExt
-from opendbc.iqpilot.car.gm.values_ext import GMFlagsIQ
+from opendbc.sunnypilot.car.gm.carstate_ext import CarStateExt
+from opendbc.sunnypilot.car.gm.values_ext import GMFlagsSP
 
 ButtonType = structs.CarState.ButtonEvent.Type
 TransmissionType = structs.CarParams.TransmissionType
@@ -19,9 +19,9 @@ BUTTONS_DICT = {CruiseButtons.RES_ACCEL: ButtonType.accelCruise, CruiseButtons.D
 
 
 class CarState(CarStateBase, CarStateExt):
-  def __init__(self, CP, CP_IQ):
-    CarStateBase.__init__(self, CP, CP_IQ)
-    CarStateExt.__init__(self, CP, CP_IQ)
+  def __init__(self, CP, CP_SP):
+    CarStateBase.__init__(self, CP, CP_SP)
+    CarStateExt.__init__(self, CP, CP_SP)
     can_define = CANDefine(DBC[CP.carFingerprint][Bus.pt])
     self.shifter_values = can_define.dv["ECMPRDNL2"]["PRNDL2"]
     self.cluster_speed_hyst_gap = CV.KPH_TO_MS / 2.
@@ -44,13 +44,13 @@ class CarState(CarStateBase, CarStateExt):
           return True
     return False
 
-  def update(self, can_parsers) -> tuple[structs.CarState, structs.IQCarState]:
+  def update(self, can_parsers) -> tuple[structs.CarState, structs.CarStateSP]:
     pt_cp = can_parsers[Bus.pt]
     cam_cp = can_parsers[Bus.cam]
     loopback_cp = can_parsers[Bus.loopback]
 
     ret = structs.CarState()
-    ret_iq = structs.IQCarState()
+    ret_sp = structs.CarStateSP()
 
     prev_cruise_buttons = self.cruise_buttons
     prev_distance_button = self.distance_button
@@ -134,7 +134,7 @@ class CarState(CarStateBase, CarStateExt):
     ret.cruiseState.enabled = pt_cp.vl["AcceleratorPedal2"]["CruiseState"] != AccState.OFF
     ret.cruiseState.standstill = pt_cp.vl["AcceleratorPedal2"]["CruiseState"] == AccState.STANDSTILL
     if self.CP.networkLocation == NetworkLocation.fwdCamera:
-      if self.CP.carFingerprint not in ALT_ACCS and not self.CP_IQ.flags & GMFlagsIQ.NON_ACC:
+      if self.CP.carFingerprint not in ALT_ACCS and not self.CP_SP.flags & GMFlagsSP.NON_ACC:
         ret.cruiseState.speed = cam_cp.vl["ASCMActiveCruiseControlStatus"]["ACCSpeedSetpoint"] * CV.KPH_TO_MS
         # This FCW signal only works for SDGM cars. CAM cars send FCW on GMLAN but this bit is always 0 for them
         ret.stockFcw = cam_cp.vl["ASCMActiveCruiseControlStatus"]["FCWAlert"] != 0
@@ -165,10 +165,10 @@ class CarState(CarStateBase, CarStateExt):
 
     CarStateExt.update(self, ret, can_parsers)
 
-    return ret, ret_iq
+    return ret, ret_sp
 
   @staticmethod
-  def get_can_parsers(CP, CP_IQ):
+  def get_can_parsers(CP, CP_SP):
     pt_messages = []
     if CP.networkLocation == NetworkLocation.fwdCamera:
       pt_messages += [

@@ -8,12 +8,15 @@ from opendbc.safety.tests.libsafety import libsafety_py
 from opendbc.safety.tests.test_defaults import TestDefaultRxHookBase
 
 GM_CAMERA_DIAG_ADDR = 0x24B
+VW_DIAG_29B_MASK  = 0x1FFFFF00
+VW_DIAG_17FC_BASE = 0x17FC0000
 
 
 class TestElm327(TestDefaultRxHookBase):
   TX_MSGS = [[addr, bus] for addr in [GM_CAMERA_DIAG_ADDR, *range(0x600, 0x800),
                                       *range(0x18DA00F1, 0x18DB00F1, 0x100),  # 29-bit UDS physical addressing
                                       *[0x18DB33F1],  # 29-bit UDS functional address
+                                      *range(VW_DIAG_17FC_BASE, VW_DIAG_17FC_BASE + 0x100)  # VW custom diag range
                                       ] for bus in range(4)]
   FWD_BUS_LOOKUP = {}
 
@@ -40,9 +43,17 @@ class TestElm327(TestDefaultRxHookBase):
       should_tx = (byte >> 4) <= 3
       self.assertEqual(should_tx, self._tx(common.make_msg(0, GM_CAMERA_DIAG_ADDR, dat=bytes([byte] * 8))))
 
-    # test GM camera diagnostic address with malformed length
-    self.assertEqual(False, self._tx(common.make_msg(0, GM_CAMERA_DIAG_ADDR, dat=bytes([0x00] * 7))))
+    # VW diag range → only ISO-TP frames 0x0–0x3 allowed
+    for addr in [VW_DIAG_17FC_BASE]:
+      for byte in range(0xff):
+        dat = bytes([byte] * 8)
+        should_tx = ((addr & VW_DIAG_29B_MASK) == VW_DIAG_17FC_BASE) and (byte >> 4) <= 3
+        self.assertEqual(should_tx, self._tx(common.make_msg(0, addr, dat=dat)))
 
+    # test GM camera and VW diagnostic address with malformed length
+    self.assertEqual(False, self._tx(common.make_msg(0, GM_CAMERA_DIAG_ADDR, dat=bytes([0x00] * 7))))
+    self.assertEqual(False, self._tx(common.make_msg(0, VW_DIAG_17FC_BASE, dat=bytes([0x00] * 7))))
+    
   def test_tx_hook_on_wrong_safety_mode(self):
     # No point, since we allow many diagnostic addresses
     pass

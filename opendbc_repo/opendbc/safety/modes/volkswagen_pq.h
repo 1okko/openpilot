@@ -13,7 +13,6 @@
 #define MSG_MOTOR_5             0x480U   // RX from ECU, for ACC main switch state
 #define MSG_ACC_GRA_ANZEIGE     0x56AU   // TX by OP, ACC HUD
 #define MSG_LDW_1               0x5BEU   // TX by OP, Lane line recognition and text alerts
-#define MSG_BLINKMODI_02        0x0AAU   // TX by OP, Blinker control
 
 static uint32_t volkswagen_pq_get_checksum(const CANPacket_t *msg) {
   return (uint32_t)msg->data[(msg->addr == MSG_MOTOR_5) ? 7 : 0];
@@ -48,14 +47,12 @@ static uint32_t volkswagen_pq_compute_checksum(const CANPacket_t *msg) {
 }
 
 static safety_config volkswagen_pq_init(uint16_t param) {
-  // Transmit of GRA_Neu is allowed on bus 0/1/2 for compatibility across camera and gateway integrations
+  // Transmit of GRA_Neu is allowed on bus 0 and 2 to keep compatibility with gateway and camera integration
   static const CanMsg VOLKSWAGEN_PQ_STOCK_TX_MSGS[] = {{MSG_HCA_1, 0, 5, .check_relay = true}, {MSG_LDW_1, 0, 8, .check_relay = true},
-                                                {MSG_GRA_NEU, 0, 4, .check_relay = false}, {MSG_GRA_NEU, 1, 4, .check_relay = false},
-                                                {MSG_GRA_NEU, 2, 4, .check_relay = false}, {MSG_BLINKMODI_02, 0, 8, .check_relay = false}};
+                                                       {MSG_GRA_NEU, 0, 4, .check_relay = false}, {MSG_GRA_NEU, 1, 4, .check_relay = false}, {MSG_GRA_NEU, 2, 4, .check_relay = false}};
 
   static const CanMsg VOLKSWAGEN_PQ_LONG_TX_MSGS[] =  {{MSG_HCA_1, 0, 5, .check_relay = true}, {MSG_LDW_1, 0, 8, .check_relay = true},
-                                                {MSG_ACC_SYSTEM, 0, 8, .check_relay = true}, {MSG_ACC_GRA_ANZEIGE, 0, 8, .check_relay = true},
-                                                {MSG_BLINKMODI_02, 0, 8, .check_relay = false}, {MSG_MOTOR_2, 2, 8, .check_relay = true}};
+                                                       {MSG_ACC_SYSTEM, 0, 8, .check_relay = true}, {MSG_ACC_GRA_ANZEIGE, 0, 8, .check_relay = true}};
 
   static RxCheck volkswagen_pq_rx_checks[] = {
     {.msg = {{MSG_LENKHILFE_3, 0, 6, 100U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},
@@ -70,7 +67,6 @@ static safety_config volkswagen_pq_init(uint16_t param) {
 
 #ifdef ALLOW_DEBUG
   volkswagen_longitudinal = GET_FLAG(param, FLAG_VOLKSWAGEN_LONG_CONTROL);
-  volkswagen_allow_long_accel_with_gas_pressed = GET_FLAG(param, FLAG_VOLKSWAGEN_ALLOW_LONG_ACCEL_WITH_GAS_PRESSED);
 #else
   SAFETY_UNUSED(param);
 #endif
@@ -99,16 +95,17 @@ static void volkswagen_pq_rx_hook(const CANPacket_t *msg) {
       update_sample(&torque_driver, torque_driver_new);
     }
 
+    if (msg->addr == MSG_MOTOR_5) {
+      // ACC main switch on is a prerequisite to enter controls, exit controls immediately on main switch off
+      // Signal: Motor_5.MO5_GRA_Hauptsch
+      acc_main_on = GET_BIT(msg, 50U);
+    }
+    
     if (volkswagen_longitudinal) {
-      if (msg->addr == MSG_MOTOR_5) {
-        // ACC main switch on is a prerequisite to enter controls, exit controls immediately on main switch off
-        // Signal: Motor_5.MO5_GRA_Hauptsch
-        acc_main_on = GET_BIT(msg, 50U);
-        if (!acc_main_on) {
-          controls_allowed = false;
-        }
+      if (!acc_main_on) {
+        controls_allowed = false;
       }
-
+      
       if (msg->addr == MSG_GRA_NEU) {
         // If ACC main switch is on, enter controls on falling edge of Set or Resume
         // Signal: GRA_Neu.GRA_Neu_Setzen
@@ -185,7 +182,7 @@ static bool volkswagen_pq_tx_hook(const CANPacket_t *msg) {
     bool steer_req = ((hca_status == 5U) || (hca_status == 7U));
 
     if (steer_torque_cmd_checks(desired_torque, steer_req, VOLKSWAGEN_PQ_STEERING_LIMITS)) {
-      tx = true;
+      tx = false;
     }
   }
 
@@ -195,8 +192,8 @@ static bool volkswagen_pq_tx_hook(const CANPacket_t *msg) {
     // Signal: ACC_System.ACS_Sollbeschl (acceleration in m/s2, scale 0.005, offset -7.22)
     int desired_accel = ((((msg->data[4] & 0x7U) << 8) | msg->data[3]) * 5U) - 7220U;
 
-    if (volkswagen_longitudinal_accel_checks(desired_accel, VOLKSWAGEN_PQ_LONG_LIMITS)) {
-      tx = true;
+    if (longitudinal_accel_checks(desired_accel, VOLKSWAGEN_PQ_LONG_LIMITS)) {
+      tx = false;
     }
   }
 

@@ -1,8 +1,8 @@
 import crcmod
 from opendbc.car.hyundai.values import CAR, HyundaiFlags
 
-from opendbc.iqpilot.car.hyundai.escc import EnhancedSmartCruiseControl
-from opendbc.iqpilot.car.hyundai.lead_data_ext import CanLeadData
+from opendbc.sunnypilot.car.hyundai.escc import EnhancedSmartCruiseControl
+from opendbc.sunnypilot.car.hyundai.lead_data_ext import CanLeadData
 
 hyundai_checksum = crcmod.mkCrcFun(0x11D, initCrc=0xFD, rev=False, xorOut=0xdf)
 

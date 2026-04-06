@@ -1,13 +1,13 @@
 from opendbc.car.crc import CRC8H2F
 
 
-def create_hca_steering_control(packer, bus, apply_torque, HCA_Status):
+def create_steering_control(packer, bus, apply_torque, lkas_enabled):
   values = {
-    "HCA_01_Status_HCA": HCA_Status,
+    "HCA_01_Status_HCA": 5 if lkas_enabled else 3,
     "HCA_01_LM_Offset": abs(apply_torque),
     "HCA_01_LM_OffSign": 1 if apply_torque < 0 else 0,
     "HCA_01_Vib_Freq": 18,
-    "HCA_01_Sendestatus": 1 if HCA_Status == 5 else 0,
+    "HCA_01_Sendestatus": 1 if lkas_enabled else 0,
     "EA_ACC_Wunschgeschwindigkeit": 327.36,
   }
   return packer.make_can_msg("HCA_01", bus, values)
@@ -52,7 +52,7 @@ def create_lka_hud_control(packer, bus, ldw_stock_values, lat_active, steering_p
   return packer.make_can_msg("LDW_02", bus, values)
 
 
-def create_acc_buttons_control(packer, bus, gra_stock_values, cancel=False, resume=False):
+def create_acc_buttons_control(packer, bus, gra_stock_values, cancel=False, resume=False, up=False, down=False):
   values = {s: gra_stock_values[s] for s in [
     "GRA_Hauptschalter",           # ACC button, on/off
     "GRA_Typ_Hauptschalter",       # ACC main button type
@@ -64,19 +64,18 @@ def create_acc_buttons_control(packer, bus, gra_stock_values, cancel=False, resu
   values.update({
     "COUNTER": (gra_stock_values["COUNTER"] + 1) % 16,
     "GRA_Abbrechen": cancel,
-    "GRA_Tip_Wiederaufnahme": resume,
+    "GRA_Tip_Wiederaufnahme": resume or up,
+    "GRA_Tip_Setzen": down,
   })
 
   return packer.make_can_msg("GRA_ACC_01", bus, values)
 
 
-def acc_control_value(main_switch_on, long_active, cruiseOverride, accFaulted):
-  if cruiseOverride:
-    acc_control = 4
+def acc_control_value(main_switch_on, acc_faulted, long_active):
+  if acc_faulted:
+    acc_control = 6
   elif long_active:
     acc_control = 3
-  elif accFaulted:
-    acc_control = 6
   elif main_switch_on:
     acc_control = 2
   else:
@@ -85,33 +84,23 @@ def acc_control_value(main_switch_on, long_active, cruiseOverride, accFaulted):
   return acc_control
 
 
-def acc_hud_status_value(main_switch_on, acc_faulted, longActive, longOverride):
-  if longOverride:
-    hud_status = 4
-  elif longActive:
-    hud_status = 3
-  elif acc_faulted:
-    hud_status = 6
-  elif main_switch_on:
-    hud_status = 2
-  else:
-    hud_status = 0
-  return hud_status
+def acc_hud_status_value(main_switch_on, acc_faulted, long_active):
+  # TODO: happens to resemble the ACC control value for now, but extend this for init/gas override later
+  return acc_control_value(main_switch_on, acc_faulted, long_active)
 
 
-def create_acc_accel_control(packer, bus, acc_type, accel, acc_control, stopping, starting, esp_hold, comfortBand, jerkLimit):
+def create_acc_accel_control(packer, bus, acc_type, acc_enabled, accel, acc_control, stopping, starting, esp_hold):
   commands = []
-  acc_enabled = acc_control == 3
 
   acc_06_values = {
     "ACC_Typ": acc_type,
     "ACC_Status_ACC": acc_control,
     "ACC_StartStopp_Info": acc_enabled,
     "ACC_Sollbeschleunigung_02": accel if acc_enabled else 3.01,
-    "ACC_zul_Regelabw_unten": comfortBand if acc_enabled else 0.2,
-    "ACC_zul_Regelabw_oben": comfortBand if acc_enabled else 0.2,
-    "ACC_neg_Sollbeschl_Grad_02": jerkLimit if acc_enabled else 0,
-    "ACC_pos_Sollbeschl_Grad_02": jerkLimit if acc_enabled else 0,
+    "ACC_zul_Regelabw_unten": 0.2,  # TODO: dynamic adjustment of comfort-band
+    "ACC_zul_Regelabw_oben": 0.2,  # TODO: dynamic adjustment of comfort-band
+    "ACC_neg_Sollbeschl_Grad_02": 4.0 if acc_enabled else 0,  # TODO: dynamic adjustment of jerk limits
+    "ACC_pos_Sollbeschl_Grad_02": 4.0 if acc_enabled else 0,  # TODO: dynamic adjustment of jerk limits
     "ACC_Anfahren": starting,
     "ACC_Anhalten": stopping,
   }
@@ -140,14 +129,13 @@ def create_acc_accel_control(packer, bus, acc_type, accel, acc_control, stopping
   return commands
 
 
-def create_acc_hud_control(packer, bus, acc_hud_status, set_speed, leadDistance, distanceBars, fcw_alert, leadVisible):
+def create_acc_hud_control(packer, bus, acc_hud_status, set_speed, lead_distance, distance):
   values = {
     "ACC_Status_Anzeige": acc_hud_status,
     "ACC_Wunschgeschw_02": set_speed if set_speed < 250 else 327.36,
-    "ACC_Gesetzte_Zeitluecke": distanceBars,
+    "ACC_Gesetzte_Zeitluecke": distance + 2,
     "ACC_Display_Prio": 3,
-    "ACC_Abstandsindex": leadDistance if leadVisible else 0,
-    "ACC_Akustik_02": fcw_alert,
+    "ACC_Abstandsindex": lead_distance,
   }
 
   return packer.make_can_msg("ACC_02", bus, values)
@@ -202,8 +190,10 @@ def volkswagen_mqb_meb_checksum(address: int, sig, d: bytearray, const: list[int
 def volkswagen_mqb_meb_dyn_len_checksum(address: int, sig, d: bytearray, entry: dict | None = None) -> int:
   const = None
   if entry:
-    d = d[:entry["length"]]
+    length = entry["length"]
+    d = d[:length]
     const = entry["magic"]
+      
   return volkswagen_mqb_meb_checksum(address, sig, d, const)
 
 
@@ -213,6 +203,7 @@ def volkswagen_mqb_meb_gen2_checksum(address: int, sig, d: bytearray) -> int:
     checksum = volkswagen_mqb_meb_dyn_len_checksum(address, sig, d, entry)
     if checksum == d[0]:
       return checksum
+    
   return volkswagen_mqb_meb_checksum(address, sig, d)
 
 
@@ -274,8 +265,6 @@ VOLKSWAGEN_MQB_MEB_CONSTANTS: dict[int, list[int]] = {
             0xC5, 0x91, 0x0F, 0x27, 0x34, 0x04, 0x7F, 0x02],  # EA_02
     0x20A: [0x9D, 0xE8, 0x36, 0xA1, 0xCA, 0x3B, 0x1D, 0x33,
             0xE0, 0xD5, 0xBB, 0x5F, 0xAE, 0x3C, 0x31, 0x9F],  # EML_06
-    0x25D: [0xDA, 0x6B, 0x0E, 0xB2, 0x78, 0xBD, 0x5A, 0x81,
-            0x7B, 0xD6, 0x41, 0x39, 0x76, 0xB6, 0xD7, 0x35],  # KLR_01
     0x26B: [0xCE, 0xCC, 0xBD, 0x69, 0xA1, 0x3C, 0x18, 0x76,
             0x0F, 0x04, 0xF2, 0x3A, 0x93, 0x24, 0x19, 0x51],  # TA_01
     0x30C: [0x0F] * 16,  # ACC_02
@@ -288,26 +277,34 @@ VOLKSWAGEN_MQB_MEB_CONSTANTS: dict[int, list[int]] = {
             0xF1, 0xB5, 0x7A, 0xC4, 0xBC, 0x60, 0xE3, 0xD1],  # Licht_Anf_01
     0x65D: [0xAC, 0xB3, 0xAB, 0xEB, 0x7A, 0xE1, 0x3B, 0xF7,
             0x73, 0xBA, 0x7C, 0x9E, 0x06, 0x5F, 0x02, 0xD9],  # ESP_20
+    0x25D: [0xDA, 0x6B, 0x0E, 0xB2, 0x78, 0xBD, 0x5A, 0x81,
+            0x7B, 0xD6, 0x41, 0x39, 0x76, 0xB6, 0xD7, 0x35],  # KLR_01
 }
 
-
-VOLKSWAGEN_MQB_MEB_GEN2_CONSTANTS: dict[int, dict] = {
-  0x0DB: {"length": 42,
-          "magic": [0x09, 0xFA, 0xCA, 0x8E, 0x62, 0xD5, 0xD1, 0xF0,
-                    0x31, 0xA0, 0xAF, 0xDA, 0x4D, 0x1A, 0x0A, 0x97]},
-  0xFC:  {"length": 60,
-          "magic": [0x69, 0xDC, 0xF9, 0x64, 0x6A, 0xCE, 0x55, 0x2C,
-                    0xC4, 0x38, 0x8F, 0xD1, 0xC6, 0x43, 0xB4, 0xB1]},
-  0x102: {"length": 44,
-          "magic": [0xD7, 0x12, 0x85, 0x7E, 0x0B, 0x34, 0xFA, 0x16,
-                    0x7A, 0x25, 0x2D, 0x8F, 0x04, 0x8E, 0x5D, 0x35]},
-  0x10B: {"length": 44,
-          "magic": [0x2C, 0xB1, 0x1A, 0x75, 0xBB, 0x65, 0x79, 0x47,
-                    0x81, 0x2B, 0xCC, 0x96, 0x17, 0xDB, 0xC0, 0x94]},
-  0x13D: {"length": 28,
-          "magic": [0x18, 0x71, 0x10, 0x8D, 0xD7, 0xAA, 0xB0, 0x78,
-                    0xAC, 0x12, 0xAE, 0x0C, 0xDD, 0xF1, 0x85, 0x68]},
-  0x139: {"length": 28,
-          "magic": [0x96, 0x92, 0x95, 0xB5, 0x6E, 0xE3, 0xBD, 0xB4,
-                    0xFA, 0xAE, 0xBE, 0xCB, 0xCF, 0xA5, 0x77, 0xEF]},
+VOLKSWAGEN_MQB_MEB_GEN2_CONSTANTS: dict[int, list[int]] = {
+  # We do not have enough data from firmware detection without OBD to explicitly differentiate everything.
+  # It is unclear if firmware changes result in more and more signals implementing new checksums via OTA updates.
+  # The corresponding calculation checks checksum correctness by itself and falls back if neccessary.
+  # If different lengths and/or magics are detected, make it list in list per signal and iterate.
+  
+  # model year around 2024?
+  0x0DB: { "length": 42, # length of signal to check
+           "magic": [0x09, 0xFA, 0xCA, 0x8E, 0x62, 0xD5, 0xD1, 0xF0,
+                     0x31, 0xA0, 0xAF, 0xDA, 0x4D, 0x1A, 0x0A, 0x97] }, # AWV_03
+  0xFC:  { "length": 60,
+           "magic": [0x69, 0xDC, 0xF9, 0x64, 0x6A, 0xCE, 0x55, 0x2C,
+                     0xC4, 0x38, 0x8F, 0xD1, 0xC6, 0x43, 0xB4, 0xB1] }, # ESC_51
+  0x102: { "length": 44,
+           "magic": [0xD7, 0x12, 0x85, 0x7E, 0x0B, 0x34, 0xFA, 0x16,
+                     0x7A, 0x25, 0x2D, 0x8F, 0x04, 0x8E, 0x5D, 0x35] }, # ESC_50
+  0x10B: { "length": 44,
+           "magic": [0x2C, 0xB1, 0x1A, 0x75, 0xBB, 0x65, 0x79, 0x47,
+                     0x81, 0x2B, 0xCC, 0x96, 0x17, 0xDB, 0xC0, 0x94] }, # Motor_51
+  0x13D: { "length": 28,
+           "magic": [0x18, 0x71, 0x10, 0x8D, 0xD7, 0xAA, 0xB0, 0x78,
+                     0xAC, 0x12, 0xAE, 0x0C, 0xDD, 0xF1, 0x85, 0x68] }, # QFK_01
+  # model year > 2024?
+  0x139: { "length": 28,
+           "magic": [0x96, 0x92, 0x95, 0xB5, 0x6E, 0xE3, 0xBD, 0xB4,
+                     0xFA, 0xAE, 0xBE, 0xCB, 0xCF, 0xA5, 0x77, 0xEF] }  # VMM_02
 }

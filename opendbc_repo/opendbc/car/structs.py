@@ -23,7 +23,7 @@ RadarDataT = capnp.lib.capnp._StructModule
 CarControlT = capnp.lib.capnp._StructModule
 CarParamsT = capnp.lib.capnp._StructModule
 
-# iqpilot structs
+# sunnypilot structs
 
 AUTO_OBJ = object()
 
@@ -60,17 +60,18 @@ class StrEnum(_StrEnum):
 
 
 @auto_dataclass
-class IQCarParams:
+class CarParamsSP:
   flags: int = auto_field()        # flags for car specific quirks
   safetyParam: int = auto_field()  # flags for custom safety flags
   pcmCruiseSpeed: bool = auto_field()
+  intelligentCruiseButtonManagementAvailable: bool = auto_field()
   enableGasInterceptor: bool = auto_field()
 
-  neuralNetworkLateralControl: 'IQCarParams.NeuralNetworkLateralControl' = field(default_factory=lambda: IQCarParams.NeuralNetworkLateralControl())
+  neuralNetworkLateralControl: 'CarParamsSP.NeuralNetworkLateralControl' = field(default_factory=lambda: CarParamsSP.NeuralNetworkLateralControl())
 
   @auto_dataclass
   class NeuralNetworkLateralControl:
-    model: 'IQCarParams.NeuralNetworkLateralControl.Model' = field(default_factory=lambda: IQCarParams.NeuralNetworkLateralControl.Model())
+    model: 'CarParamsSP.NeuralNetworkLateralControl.Model' = field(default_factory=lambda: CarParamsSP.NeuralNetworkLateralControl.Model())
     fuzzyFingerprint: bool = auto_field()
 
     @auto_dataclass
@@ -80,20 +81,43 @@ class IQCarParams:
 
 
 @auto_dataclass
-class AlwaysOnLateral:
-  state: 'AlwaysOnLateral.AlwaysOnLateralState' = field(
-    default_factory=lambda: AlwaysOnLateral.AlwaysOnLateralState.disabled
+class ModularAssistiveDrivingSystem:
+  state: 'ModularAssistiveDrivingSystem.ModularAssistiveDrivingSystemState' = field(
+    default_factory=lambda: ModularAssistiveDrivingSystem.ModularAssistiveDrivingSystemState.disabled
   )
   enabled: bool = auto_field()
   active: bool = auto_field()
   available: bool = auto_field()
 
-  class AlwaysOnLateralState(StrEnum):
+  class ModularAssistiveDrivingSystemState(StrEnum):
     disabled = auto()
     paused = auto()
     enabled = auto()
     softDisabling = auto()
     overriding = auto()
+
+
+@auto_dataclass
+class IntelligentCruiseButtonManagement:
+  state: 'IntelligentCruiseButtonManagement.IntelligentCruiseButtonManagementState' = field(
+    default_factory=lambda: IntelligentCruiseButtonManagement.IntelligentCruiseButtonManagementState.inactive
+  )
+  sendButton: 'IntelligentCruiseButtonManagement.SendButtonState' = field(
+    default_factory=lambda: IntelligentCruiseButtonManagement.SendButtonState.none
+  )
+  vTarget: float = auto_field()
+
+  class IntelligentCruiseButtonManagementState(StrEnum):
+    inactive = auto()
+    preActive = auto()
+    increasing = auto()
+    decreasing = auto()
+    holding = auto()
+
+  class SendButtonState(StrEnum):
+    none = auto()
+    increase = auto()
+    decrease = auto()
 
 
 @auto_dataclass
@@ -118,18 +142,19 @@ class LeadData:
 
 
 @auto_dataclass
-class IQCarControl:
-  aol: 'AlwaysOnLateral' = field(default_factory=lambda: AlwaysOnLateral())
-  params: list['IQCarControl.Param'] = auto_field()
+class CarControlSP:
+  mads: 'ModularAssistiveDrivingSystem' = field(default_factory=lambda: ModularAssistiveDrivingSystem())
+  params: list['CarControlSP.Param'] = auto_field()
   leadOne: 'LeadData' = field(default_factory=lambda: LeadData())
   leadTwo: 'LeadData' = field(default_factory=lambda: LeadData())
+  intelligentCruiseButtonManagement: 'IntelligentCruiseButtonManagement' = field(default_factory=lambda: IntelligentCruiseButtonManagement())
 
   @auto_dataclass
   class Param:
     key: str = auto_field()
     value: bytes = auto_field()
-    type: 'IQCarControl.ParamType' = field(
-      default_factory=lambda: IQCarControl.ParamType.string
+    type: 'CarControlSP.ParamType' = field(
+      default_factory=lambda: CarControlSP.ParamType.string
     )
 
   class ParamType(StrEnum):
@@ -143,5 +168,5 @@ class IQCarControl:
 
 
 @auto_dataclass
-class IQCarState:
+class CarStateSP:
   speedLimit: float = auto_field()

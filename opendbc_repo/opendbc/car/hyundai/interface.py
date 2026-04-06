@@ -10,9 +10,9 @@ from opendbc.car.hyundai.carcontroller import CarController
 from opendbc.car.hyundai.carstate import CarState
 from opendbc.car.hyundai.radar_interface import RadarInterface
 
-from opendbc.iqpilot.car.hyundai.escc import ESCC_MSG
-from opendbc.iqpilot.car.hyundai.longitudinal.helpers import get_longitudinal_tune
-from opendbc.iqpilot.car.hyundai.values import HyundaiFlagsIQ, HyundaiSafetyFlagsIQ
+from opendbc.sunnypilot.car.hyundai.escc import ESCC_MSG
+from opendbc.sunnypilot.car.hyundai.longitudinal.helpers import get_longitudinal_tune
+from opendbc.sunnypilot.car.hyundai.values import HyundaiFlagsSP, HyundaiSafetyFlagsSP
 
 ButtonType = structs.CarState.ButtonEvent.Type
 Ecu = structs.CarParams.Ecu
@@ -161,8 +161,8 @@ class CarInterface(CarInterfaceBase):
     return ret
 
   @staticmethod
-  def _get_params_iq(stock_cp: structs.CarParams, ret: structs.IQCarParams, candidate, fingerprint: dict[int, dict[int, int]],
-                     car_fw: list[structs.CarParams.CarFw], alpha_long: bool, is_release_iq: bool, docs: bool) -> structs.IQCarParams:
+  def _get_params_sp(stock_cp: structs.CarParams, ret: structs.CarParamsSP, candidate, fingerprint: dict[int, dict[int, int]],
+                     car_fw: list[structs.CarParams.CarFw], alpha_long: bool, is_release_sp: bool, docs: bool) -> structs.CarParamsSP:
     # identical logic used in _get_params
     # "LKA steering" if LKAS or LKAS_ALT messages are seen coming from the camera.
     # Generally means our LKAS message is forwarded to another ECU (commonly ADAS ECU)
@@ -173,16 +173,16 @@ class CarInterface(CarInterfaceBase):
     CAN = CanBus(None, fingerprint, lka_steering)
 
     if not stock_cp.flags & HyundaiFlags.CANFD:
-      # TODO-IQ: add route with ESCC message for process replay
+      # TODO-SP: add route with ESCC message for process replay
       if ESCC_MSG in fingerprint[0]:
-        ret.flags |= HyundaiFlagsIQ.ENHANCED_SCC.value
+        ret.flags |= HyundaiFlagsSP.ENHANCED_SCC.value
 
-    if ret.flags & HyundaiFlagsIQ.ENHANCED_SCC:
-      ret.safetyParam |= HyundaiSafetyFlagsIQ.ESCC
+    if ret.flags & HyundaiFlagsSP.ENHANCED_SCC:
+      ret.safetyParam |= HyundaiSafetyFlagsSP.ESCC
       stock_cp.radarUnavailable = False
 
     if stock_cp.flags & HyundaiFlags.HAS_LDA_BUTTON:
-      ret.safetyParam |= HyundaiSafetyFlagsIQ.HAS_LDA_BUTTON
+      ret.safetyParam |= HyundaiSafetyFlagsSP.HAS_LDA_BUTTON
 
     if stock_cp.flags & (HyundaiFlags.CANFD_CAMERA_SCC | HyundaiFlags.CAMERA_SCC):
       stock_cp.radarUnavailable = False
@@ -190,11 +190,11 @@ class CarInterface(CarInterfaceBase):
     if stock_cp.flags & HyundaiFlags.ALT_LIMITS_2:
       stock_cp.dashcamOnly = False
 
-    if ret.flags & HyundaiFlagsIQ.NON_SCC:
+    if ret.flags & HyundaiFlagsSP.NON_SCC:
       stock_cp.alphaLongitudinalAvailable = False
       stock_cp.openpilotLongitudinalControl = False
       stock_cp.pcmCruise = True
-      ret.safetyParam |= HyundaiSafetyFlagsIQ.NON_SCC
+      ret.safetyParam |= HyundaiSafetyFlagsSP.NON_SCC
 
     # untested non-SCC platforms, need user validations
     if stock_cp.carFingerprint in (CAR.HYUNDAI_BAYON_1ST_GEN_NON_SCC, CAR.KIA_FORTE_2021_NON_SCC,
@@ -203,37 +203,38 @@ class CarInterface(CarInterfaceBase):
 
     if stock_cp.flags & HyundaiFlags.CANFD:
       if 0x1fa in fingerprint[CAN.ECAN]:
-        ret.flags |= HyundaiFlagsIQ.SPEED_LIMIT_AVAILABLE.value
+        ret.flags |= HyundaiFlagsSP.SPEED_LIMIT_AVAILABLE.value
     else:
-      # Detect smartMDPS, which bypasses EPS low-speed lockout, allowing iqpilot to send steering commands down to 0
+      # Detect smartMDPS, which bypasses EPS low-speed lockout, allowing sunnypilot to send steering commands down to 0
       if 0x2AA in fingerprint[0]:
         stock_cp.minSteerSpeed = 0.0
         stock_cp.flags &= ~HyundaiFlags.MIN_STEER_32_MPH.value
 
       if 0x544 in fingerprint[0]:
-        ret.flags |= HyundaiFlagsIQ.SPEED_LIMIT_AVAILABLE.value
+        ret.flags |= HyundaiFlagsSP.SPEED_LIMIT_AVAILABLE.value
 
       if 0x53E in fingerprint[2]:
-        ret.flags |= HyundaiFlagsIQ.HAS_LKAS12.value
+        ret.flags |= HyundaiFlagsSP.HAS_LKAS12.value
 
+    ret.intelligentCruiseButtonManagementAvailable = not (stock_cp.flags & HyundaiFlags.CANFD_ALT_BUTTONS)
 
     return ret
 
   @staticmethod
-  def _get_longitudinal_tuning_iq(stock_cp: structs.CarParams, ret: structs.IQCarParams) -> structs.IQCarParams:
-    if ret.flags & (HyundaiFlagsIQ.LONG_TUNING_DYNAMIC | HyundaiFlagsIQ.LONG_TUNING_PREDICTIVE):
+  def _get_longitudinal_tuning_sp(stock_cp: structs.CarParams, ret: structs.CarParamsSP) -> structs.CarParamsSP:
+    if ret.flags & (HyundaiFlagsSP.LONG_TUNING_DYNAMIC | HyundaiFlagsSP.LONG_TUNING_PREDICTIVE):
       get_longitudinal_tune(stock_cp)
 
     return ret
 
   @staticmethod
-  def init(CP, CP_IQ, can_recv, can_send, communication_control=None):
+  def init(CP, CP_SP, can_recv, can_send, communication_control=None):
     # 0x80 silences response
     if communication_control is None:
       communication_control = bytes([uds.SERVICE_TYPE.COMMUNICATION_CONTROL, 0x80 | uds.CONTROL_TYPE.DISABLE_RX_DISABLE_TX, uds.MESSAGE_TYPE.NORMAL])
 
     if CP.openpilotLongitudinalControl and not ((CP.flags & (HyundaiFlags.CANFD_CAMERA_SCC | HyundaiFlags.CAMERA_SCC)) or
-                                                (CP_IQ.flags & HyundaiFlagsIQ.ENHANCED_SCC)):
+                                                (CP_SP.flags & HyundaiFlagsSP.ENHANCED_SCC)):
       addr, bus = 0x7d0, CanBus(CP).ECAN if CP.flags & HyundaiFlags.CANFD else 0
       if CP.flags & HyundaiFlags.CANFD_LKA_STEERING.value:
         addr, bus = 0x730, CanBus(CP).ECAN

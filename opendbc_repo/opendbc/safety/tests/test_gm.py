@@ -7,7 +7,7 @@ from opendbc.safety.tests.libsafety import libsafety_py
 import opendbc.safety.tests.common as common
 from opendbc.safety.tests.common import CANPackerSafety
 
-from opendbc.iqpilot.car.gm.values_ext import GMSafetyFlagsIQ
+from opendbc.sunnypilot.car.gm.values_ext import GMSafetyFlagsSP
 
 
 class Buttons:
@@ -236,7 +236,7 @@ class TestGmCameraNonACCSafety(TestGmCameraSafety):
     self.packer = CANPackerSafety("gm_global_a_powertrain_generated")
     self.packer_chassis = CANPackerSafety("gm_global_a_chassis")
     self.safety = libsafety_py.libsafety
-    self.safety.set_current_safety_param_iq(GMSafetyFlagsIQ.NON_ACC)
+    self.safety.set_current_safety_param_sp(GMSafetyFlagsSP.NON_ACC)
     self.safety.set_safety_hooks(CarParams.SafetyModel.gm, GMSafetyFlags.HW_CAM | self.EXTRA_SAFETY_PARAM)
     self.safety.init_tests()
 

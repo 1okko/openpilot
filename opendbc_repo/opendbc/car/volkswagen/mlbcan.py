@@ -1,12 +1,14 @@
-from opendbc.car.volkswagen.mqbcan import (volkswagen_mqb_meb_checksum, xor_checksum, create_lka_hud_control as mqb_create_lka_hud_control)
+from opendbc.car.volkswagen.mqbcan import (volkswagen_mqb_meb_checksum, xor_checksum,
+                                           create_lka_hud_control as mqb_create_lka_hud_control)
 
-def create_hca_steering_control(packer, bus, apply_steer, HCA_Status):
+# TODO: Parameterize the hca control type (5 vs 7) and consolidate with MQB (and PQ?)
+def create_steering_control(packer, bus, apply_steer, lkas_enabled):
   values = {
-    "HCA_01_Status_HCA": HCA_Status,
+    "HCA_01_Status_HCA": 7 if lkas_enabled else 3,
     "HCA_01_LM_Offset": abs(apply_steer),
     "HCA_01_LM_OffSign": 1 if apply_steer < 0 else 0,
     "HCA_01_Vib_Freq": 18,
-    "HCA_01_Sendestatus": 1 if HCA_Status in (5, 7) else 0,
+    "HCA_01_Sendestatus": 1 if lkas_enabled else 0,
     "EA_ACC_Wunschgeschwindigkeit": 327.36,
   }
   return packer.make_can_msg("HCA_01", bus, values)
@@ -33,20 +35,20 @@ def create_acc_buttons_control(packer, bus, gra_stock_values, cancel=False, resu
   return packer.make_can_msg("LS_01", bus, values)
 
 
-def acc_control_value(main_switch_on, long_active, cruiseOverride):
+def acc_control_value(main_switch_on, acc_faulted, long_active):
   return 0
 
 
-def acc_hud_status_value(main_switch_on, acc_faulted, gasPressed, longActive, longOverride):
+def acc_hud_status_value(main_switch_on, acc_faulted, long_active):
   return 0
 
 
-def create_acc_accel_control(packer, bus, acc_type, accel, acc_control, stopping, starting, esp_hold, comfortBand, jerkLimit):
+def create_acc_accel_control(packer, bus, acc_type, acc_enabled, accel, acc_control, stopping, starting, esp_hold):
   values = {}
-  return [packer.make_can_msg("ACC_05", bus, values)]
+  return packer.make_can_msg("ACC_05", bus, values)
 
 
-def create_acc_hud_control(packer, bus, acc_hud_status, set_speed, leadDistance, distanceBars, fcw_alert, leadVisible):
+def create_acc_hud_control(packer, bus, acc_hud_status, set_speed, lead_distance, distance):
   values = {}
   return packer.make_can_msg("ACC_02", bus, values)
 
