@@ -185,7 +185,7 @@ class CarController(CarControllerBase):
           can_sends.append(mebcan.create_capacitive_wheel_touch(self.packer_pt, self.CAN.pt, CC.latActive, CS.klr_stock_values))
         self.klr_counter_last = CS.klr_stock_values["COUNTER"]
 
-    if self.CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
+    if self.CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO and not (self.CP.flags & VolkswagenFlags.MQB_EVO_GEN2):
       if self.frame % 2 == 0:
         blinker_active = CS.left_blinker_active or CS.right_blinker_active
         left_blinker = CC.leftBlinker if not blinker_active else False
