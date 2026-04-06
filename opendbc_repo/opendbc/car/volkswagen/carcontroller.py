@@ -185,7 +185,7 @@ class CarController(CarControllerBase):
           can_sends.append(mebcan.create_capacitive_wheel_touch(self.packer_pt, self.CAN.pt, CC.latActive, CS.klr_stock_values))
         self.klr_counter_last = CS.klr_stock_values["COUNTER"]
 
-    if self.CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO and not (self.CP.flags & VolkswagenFlags.MQB_EVO_GEN2):
+    if self.CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO :
       if self.frame % 2 == 0:
         blinker_active = CS.left_blinker_active or CS.right_blinker_active
         left_blinker = CC.leftBlinker if not blinker_active else False
@@ -241,7 +241,7 @@ class CarController(CarControllerBase):
       if self.CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
         disable_alerts = getattr(CC, "disableCarSteerAlerts", False)
         sound_alert = self.CCP.LDW_SOUNDS["Chime"] if hud_alert != 0 and not disable_alerts else self.CCP.LDW_SOUNDS["None"]
-        can_sends.append(self.CCS.create_lka_hud_control(self.packer_pt, self.CAN.pt,self.CP, CS.ldw_stock_values, CC.latActive, CS.out.steeringPressed,
+        can_sends.append(self.CCS.create_lka_hud_control(self.packer_pt, self.CAN.pt, CS.ldw_stock_values, CC.latActive, CS.out.steeringPressed,
                                                          hud_alert, hud_control, sound_alert))
       else:
         can_sends.append(self.CCS.create_lka_hud_control(self.packer_pt, self.CAN.pt, CS.ldw_stock_values, CC.latActive,
