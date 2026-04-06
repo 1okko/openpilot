@@ -241,7 +241,7 @@ class CarController(CarControllerBase):
       if self.CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
         disable_alerts = getattr(CC, "disableCarSteerAlerts", False)
         sound_alert = self.CCP.LDW_SOUNDS["Chime"] if hud_alert != 0 and not disable_alerts else self.CCP.LDW_SOUNDS["None"]
-        can_sends.append(self.CCS.create_lka_hud_control(self.packer_pt, self.CAN.pt, CS.ldw_stock_values, CC.latActive, CS.out.steeringPressed,
+        can_sends.append(self.CCS.create_lka_hud_control(self.packer_pt, self.CAN.pt,self.CP, CS.ldw_stock_values, CC.latActive, CS.out.steeringPressed,
                                                          hud_alert, hud_control, sound_alert))
       else:
         can_sends.append(self.CCS.create_lka_hud_control(self.packer_pt, self.CAN.pt, CS.ldw_stock_values, CC.latActive,
