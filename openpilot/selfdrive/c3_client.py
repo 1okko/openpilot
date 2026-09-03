@@ -750,7 +750,10 @@ async def run():
               print(f"[C3] 处理消息出错: {e}")
               traceback.print_exc()
 
-        await asyncio.wait_for(asyncio.gather(heartbeat(), receiver()), timeout=65)
+        # 原为 wait_for(..., timeout=65)：每 65 秒强制取消 gather，导致设备「自杀式」周期断线重连（~66s 一次）
+        # 保活已由内部 heartbeat(5s) + WebSocket ping(20s/timeout15s) 兜底，无需外层硬超时。
+        # 真正断连由 receiver() 的 async for 抛 ConnectionError 自动退出重连，逻辑不变。
+        await asyncio.gather(heartbeat(), receiver())
 
     except (ConnectionError, OSError, _WebSocketError):
       print(f"[C3] 连接断开")
