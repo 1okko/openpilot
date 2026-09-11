@@ -80,6 +80,40 @@ function launch {
   ln -sfn teleoprtc_repo/teleoprtc teleoprtc
   ln -sfn tinygrad_repo/tinygrad tinygrad
 
+  # The bundled AGNOS updater zipapp imports pyserial (tici/lpa.py inside the
+  # archive). agnos_init may invoke that updater, so make sure serial is
+  # importable first. Offline wheel in third_party/wheels is tried before the
+  # PyPI fallback. Installs into $DIR/pydeps without touching the device venv.
+  if [ -f /AGNOS ]; then
+    # Put pydeps on PYTHONPATH unconditionally BEFORE the import test and the
+    # AGNOS updater run. Previously the export was gated on an import test that
+    # ran without pydeps on PYTHONPATH, so it never fired even when the wheel
+    # install succeeded, and the updater still crashed on `import serial`.
+    PYDEPS="${PYDEPS:-$DIR/pydeps}"
+    mkdir -p "$PYDEPS"
+    case ":$PYTHONPATH:" in
+      *":$PYDEPS:"*) ;;
+      *) export PYTHONPATH="$PYDEPS:$PYTHONPATH" ;;
+    esac
+    if ! python3 -c "import serial" > /dev/null 2>&1; then
+      echo "[bootstrap] pyserial missing before AGNOS check; installing..."
+      wheel_dir="$DIR/third_party/wheels"
+      if [ -d "$wheel_dir" ] && ls "$wheel_dir"/pyserial*.whl > /dev/null 2>&1; then
+        echo "[bootstrap] pyserial: installing from local wheel..."
+        python3 -m pip install --no-index --no-deps --find-links "$wheel_dir" --target "$PYDEPS" --upgrade pyserial > /tmp/pip_pyserial.log 2>&1
+      fi
+      if ! python3 -c "import serial" > /dev/null 2>&1; then
+        echo "[bootstrap] pyserial: installing from PyPI (needs network)..."
+        python3 -m pip install --target "$PYDEPS" --upgrade pyserial > /tmp/pip_pyserial.log 2>&1
+      fi
+      if python3 -c "import serial" > /dev/null 2>&1; then
+        echo "[bootstrap] pyserial: ok"
+      else
+        echo "[bootstrap] pyserial NOT available; AGNOS updater may fail importing serial"
+      fi
+    fi
+  fi
+
   # hardware specific init
   if [ -f /AGNOS ]; then
     agnos_init
