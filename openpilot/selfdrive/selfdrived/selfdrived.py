@@ -427,7 +427,7 @@ class SelfdriveD(CruiseHelper):
     if CS.canTimeout:
       self.events.add(EventName.canBusMissing)
     elif not CS.canValid:
-      pass#self.events.add(EventName.canError)
+      self.events.add(EventName.canError)
 
     # generic catch-all. ideally, a more specific event should be added above instead
     has_disable_events = self.events.contains(ET.NO_ENTRY) and (self.events.contains(ET.SOFT_DISABLE) or self.events.contains(ET.IMMEDIATE_DISABLE))
