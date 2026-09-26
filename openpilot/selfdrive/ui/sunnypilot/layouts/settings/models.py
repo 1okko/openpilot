@@ -107,7 +107,7 @@ class ModelsLayout(Widget):
                                         lambda v: f"{v / 100:.2f} m")
 
     self.items = [self.small_model_item, self.big_model_item, self.cancel_download_item, self.download_item, self.refresh_item, self.clear_cache_item,
-                  self.lane_turn_value_control, self.delay_control]
+                  self.lane_turn_value_control, self.delay_control, self.camera_offset]
 
   def _update_lagd_description(self, lagd_toggle: bool):
     desc = tr("Enable this for the car to learn and adapt its steering response time. Disable to use a fixed steering response time. " +
