@@ -179,21 +179,8 @@ class CarState(CarStateBase, CarStateExt):
     ret.espDisabled = cp.vl["ESP_CONTROL"]["TC_DISABLED"] != 0
 
     if self.CP.enableBsm:
-      bsm_pt = cp.vl["BSM"]
-      bsm_cam = cp_cam.vl["BSM"]
-
-      ret.leftBlindspot = any((
-        bsm_pt["L_ADJACENT"] == 1,
-        bsm_pt["L_APPROACHING"] == 1,
-        bsm_cam["L_ADJACENT"] == 1,
-        bsm_cam["L_APPROACHING"] == 1,
-      ))
-      ret.rightBlindspot = any((
-        bsm_pt["R_ADJACENT"] == 1,
-        bsm_pt["R_APPROACHING"] == 1,
-        bsm_cam["R_ADJACENT"] == 1,
-        bsm_cam["R_APPROACHING"] == 1,
-      ))
+      ret.leftBlindspot = (cp.vl["BSM"]["L_ADJACENT"] == 1) or (cp.vl["BSM"]["L_APPROACHING"] == 1)
+      ret.rightBlindspot = (cp.vl["BSM"]["R_ADJACENT"] == 1) or (cp.vl["BSM"]["R_APPROACHING"] == 1)
 
     if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:
       self.lkas_hud = copy.copy(cp_cam.vl["LKAS_HUD"])
@@ -240,13 +227,7 @@ class CarState(CarStateBase, CarStateExt):
       ("RSA2", 0),
     ]
 
-    if CP.enableBsm:
-      # BSM may be present on either the powertrain or camera bus.
-      # Mark it optional on each bus so a missing copy does not invalidate the parser.
-      pt_messages.append(("BSM", float('nan')))
-      cam_messages.append(("BSM", float('nan')))
-
     return {
       Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], pt_messages, 0),
-      Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], cam_messages, 2),
+      Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], [] + cam_messages, 2),
     }
