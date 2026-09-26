@@ -116,7 +116,7 @@ msgstr "自适应巡航已禁用"
 
 #: openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
 msgid "Adjust Camera Offset"
-msgstr "调整摄像头偏移"
+msgstr "居中位置调整（向左+向右-）"
 
 #: openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
 msgid "Adjust Lane Turn Speed"
