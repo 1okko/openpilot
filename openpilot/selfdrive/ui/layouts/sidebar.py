@@ -140,16 +140,12 @@ class Sidebar(Widget, SidebarSP):
     return self._ip
 
   def _update_temperature_status(self, device_state):
-    # Show the max CPU temperature value instead of just GOOD/HIGH.
-    cpu_temps = device_state.cpuTempC
-    max_temp = max(cpu_temps) if cpu_temps else 0.0
-    temp_str = "{:.0f}°C".format(max_temp)
     thermal_status = device_state.thermalStatus
 
     if thermal_status == ThermalStatus.ok:
-      self._temp_status.update(tr_noop("TEMP"), temp_str, Colors.GOOD)
+      self._temp_status.update(tr_noop("TEMP"), tr_noop("GOOD"), Colors.GOOD)
     else:
-      self._temp_status.update(tr_noop("TEMP"), temp_str, Colors.DANGER)
+      self._temp_status.update(tr_noop("TEMP"), tr_noop("HIGH"), Colors.DANGER)
 
   def _update_connection_status(self, device_state):
     last_ping = device_state.lastAthenaPingTime
