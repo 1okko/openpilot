@@ -2283,7 +2283,7 @@ msgstr "无法识别的车辆"
 
 #: openpilot/selfdrive/ui/layouts/settings/software.py
 msgid "Updates are only downloaded while the car is off."
-msgstr "仅在车辆熄火时下载更新。"
+msgstr "请先从设备菜单启用停车设置模式。"
 
 #: openpilot/selfdrive/ui/widgets/prime.py
 msgid "Upgrade Now"
