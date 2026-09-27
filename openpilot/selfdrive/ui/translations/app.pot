@@ -2804,3 +2804,10 @@ msgstr ""
 msgid "Reverse"
 msgstr ""
 
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Alert Beeper"
+msgstr ""
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Play engage, disengage, and warning beeps using the hardware beeper."
+msgstr ""

@@ -28,6 +28,11 @@ class VisualsLayout(Widget):
 
   def _initialize_items(self):
     self._toggle_defs = {
+      "BeepEnabled": (
+        lambda: tr("Alert Beeper"),
+        tr("Play engage, disengage, and warning beeps using the hardware beeper."),
+        None,
+      ),
       "BlindSpot": (
         lambda: tr("Show Blind Spot Warnings"),
         tr("Enabling this will display warnings when a vehicle is detected in your " +

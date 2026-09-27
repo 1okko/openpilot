@@ -2891,3 +2891,10 @@ msgstr "准备中"
 msgid "unavailable"
 msgstr "不可用"
 
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Alert Beeper"
+msgstr "提示音"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Play engage, disengage, and warning beeps using the hardware beeper."
+msgstr "使用硬件蜂鸣器播放接管、退出和警告提示音。"

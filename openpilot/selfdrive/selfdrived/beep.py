@@ -5,6 +5,7 @@ import threading
 
 import openpilot.cereal.messaging as messaging
 from opendbc.car.structs import car
+from openpilot.common.params import Params
 from openpilot.common.realtime import Ratekeeper
 
 AudibleAlert = car.CarControl.HUDControl.AudibleAlert
@@ -12,6 +13,7 @@ AudibleAlert = car.CarControl.HUDControl.AudibleAlert
 class Beepd:
   def __init__(self):
     self.current_alert = AudibleAlert.none
+    self.params = Params()
     self.enable_gpio()
     #self.startup_beep()
 
@@ -32,6 +34,8 @@ class Beepd:
                    encoding='utf8')
 
   def _beep(self, on):
+    if on and not self.params.get_bool("BeepEnabled"):
+      return
     val = "1" if on else "0"
     subprocess.run(f"echo \"{val}\" | sudo tee /sys/class/gpio/gpio42/value",
                    shell=True,
