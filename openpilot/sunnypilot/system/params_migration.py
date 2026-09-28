@@ -84,6 +84,17 @@ def _migrate_tesla_mads_screen_button(_params):
     cloudlog.exception(f"Error migrating TeslaMadsScreenButton: {e}")
 
 
+def _disable_speed_limit_control(_params):
+  try:
+    from openpilot.sunnypilot.selfdrive.controls.lib.speed_limit.common import Mode as SpeedLimitMode
+
+    if _params.get("SpeedLimitMode", return_default=True) != int(SpeedLimitMode.off):
+      _params.put("SpeedLimitMode", int(SpeedLimitMode.off), block=True)
+      cloudlog.info("params_migration: disabled speed limit control")
+  except Exception as e:
+    cloudlog.exception(f"Error disabling speed limit control: {e}")
+
+
 def _migrate_model_bundle_slots(_params):
   # Pre-split, a chestnut user's big-model selection lived in the single
   # ActiveBundle. Seed both slots; validation drops whichever does not match
@@ -142,3 +153,6 @@ def run_migration(_params):
 
   # seed the chestnut model slot from the pre-split single slot
   _migrate_model_bundle_slots(_params)
+
+  # speed limit settings menu is intentionally hidden on this build
+  _disable_speed_limit_control(_params)
