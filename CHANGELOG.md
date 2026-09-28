@@ -1,4 +1,4 @@
-sunnypilot Version MR.ONE-2026 (2026-08-28)
+sunnypilot Version MR.ONE-2026 (2026-09-28)
 ========================
 * MR.ONE Custom Features
   * panda: GM ignition-over-CAN detection (SystemPowerMode 0x1F1 on bus 0 and bus 2) for automatic device power-on on GM vehicles
@@ -17,6 +17,16 @@ sunnypilot Version MR.ONE-2026 (2026-08-28)
   * dashcam: LAN dashcam viewer (single-file, stdlib only) on port 5088
   * system: force timezone Asia/Shanghai (Beijing)
   * system: re-enable loggerd dashcam recordings
+  * agnos: switch to patched 19.7-c3xl-dev system image
+  * ui: add Alert Beeper toggle and Simplified Chinese translations
+  * ui: disable Speed Limit Control and hide its onroad indicator
+  * ui: hide MAX set-speed and experimental/wheel onroad icons
+  * ui: hide Uninstall button in Software settings
+  * ui: clarify camera offset label and software update prompt translations
+  * updater: show download percentage and speed for Git and AGNOS updates
+  * updater: check for updates while online; downloads and installs remain offroad-only
+  * hardware: suppress boot-time temperature spike and limit fan speed for the first 20 seconds
+  * ui: revise software update prompt to require Always Offroad mode
 * What's Changed (sunnypilot/sunnypilot)
   * Merged upstream PRs: #1953 (Model Selector upgrades), #1958 (model cache size handling), #1959 (fix current model not updating), #1960 (persist model selection per catalog), #1966 (dual-slot model backend with ref-based downloads), #1967 (scrolling label speed fix), #1968 (sidebar eGPU icon), #1969 (big model failure detection), #1971 (OSM map deletion via sunnylink)
   * ui: update gates for certain toggles by @sunnyhaibin in PR #1830
