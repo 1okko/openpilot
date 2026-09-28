@@ -20,6 +20,7 @@ from openpilot.common.hardware import AGNOS, HARDWARE
 from openpilot.common.version import get_build_metadata, SP_BRANCH_MIGRATIONS
 
 LOCK_FILE = os.getenv("UPDATER_LOCK_FILE", "/tmp/safe_staging_overlay.lock")
+ONROAD_CHECK_INTERVAL = 15 * 60
 STAGING_ROOT = os.getenv("UPDATER_STAGING_ROOT", "/data/safe_staging")
 
 OVERLAY_UPPER = os.path.join(STAGING_ROOT, "upper")
@@ -511,6 +512,7 @@ def main() -> None:
 
     # Run the update loop
     first_run = True
+    last_onroad_check = 0.0
     while True:
       wait_helper.ready_event.clear()
 
@@ -526,6 +528,19 @@ def main() -> None:
         if not system_time_valid() or first_run:
           first_run = False
           wait_helper.sleep(60)
+          continue
+
+        # While driving, only check for a remote update. Downloading and applying
+        # remain offroad-only so an update cannot interfere with driving.
+        if not params.get_bool("IsOffroad"):
+          now = time.monotonic()
+          if now - last_onroad_check >= ONROAD_CHECK_INTERVAL:
+            params.put("UpdaterState", "checking...", block=True)
+            updater.check_for_update()
+            updater.set_params(False, 0, None)
+            last_onroad_check = now
+          params.put("UpdaterState", "idle", block=True)
+          wait_helper.sleep(30)
           continue
 
         update_failed_count += 1
