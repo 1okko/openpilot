@@ -109,8 +109,11 @@ class SoftwareLayout(Widget):
       # Updater responded
       self._waiting_for_updater = False
       self._download_btn.action_item.set_enabled(False)
-      # Use the mapping, with a fallback to the original state string
-      display_text = STATE_TO_DISPLAY_TEXT.get(updater_state, updater_state)
+      # Keep the translated prefix while showing dynamic progress/speed suffix.
+      if updater_state.startswith("downloading..."):
+        display_text = tr("downloading...") + updater_state[len("downloading..."):]
+      else:
+        display_text = STATE_TO_DISPLAY_TEXT.get(updater_state, updater_state)
       self._download_btn.action_item.set_value(display_text)
     else:
       if failed_count > 0:

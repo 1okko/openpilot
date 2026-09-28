@@ -16,11 +16,15 @@ AGNOS_MANIFEST_FILE = "openpilot/system/hardware/comma/agnos.json"
 
 
 class StreamingDecompressor:
-  def __init__(self, url: str) -> None:
+  def __init__(self, url: str, progress_callback=None) -> None:
     self.buf = b""
 
     self.req = requests.get(url, stream=True, headers={'Accept-Encoding': 'identity'}, timeout=60)
     self.it = self.req.iter_content(chunk_size=1024 * 1024)
+    self.progress_callback = progress_callback
+    self.total_bytes = int(self.req.headers.get('content-length', 0) or 0)
+    self.downloaded_bytes = 0
+    self.start_time = time.monotonic()
     self.decompressor = lzma.LZMADecompressor(format=lzma.FORMAT_AUTO)
     self.eof = False
     self.sha256 = hashlib.sha256()
@@ -32,6 +36,10 @@ class StreamingDecompressor:
 
         try:
           compressed = next(self.it)
+          self.downloaded_bytes += len(compressed)
+          if self.progress_callback is not None:
+            elapsed = max(time.monotonic() - self.start_time, 1e-3)
+            self.progress_callback(self.downloaded_bytes, self.total_bytes, self.downloaded_bytes / elapsed)
         except StopIteration:
           self.eof = True
           break
@@ -155,9 +163,14 @@ def clear_partition_hash(target_slot_number: int, partition: dict) -> None:
     os.sync()
 
 
-def extract_compressed_image(target_slot_number: int, partition: dict, cloudlog):
+def extract_compressed_image(target_slot_number: int, partition: dict, cloudlog, progress_callback=None):
   path = get_partition_path(target_slot_number, partition)
-  downloader = StreamingDecompressor(partition['url'])
+
+  def on_download_progress(downloaded: int, total: int, speed: float) -> None:
+    if progress_callback is not None:
+      progress_callback(partition['name'], downloaded, total, speed)
+
+  downloader = StreamingDecompressor(partition['url'], on_download_progress)
 
   with open(path, 'wb+') as out:
     # Flash partition
@@ -184,7 +197,7 @@ def extract_compressed_image(target_slot_number: int, partition: dict, cloudlog)
     os.sync()
 
 
-def flash_partition(target_slot_number: int, partition: dict, cloudlog, standalone=False):
+def flash_partition(target_slot_number: int, partition: dict, cloudlog, standalone=False, progress_callback=None):
   cloudlog.info(f"Downloading and writing {partition['name']}")
 
   if verify_partition(target_slot_number, partition):
@@ -198,7 +211,7 @@ def flash_partition(target_slot_number: int, partition: dict, cloudlog, standalo
 
   path = get_partition_path(target_slot_number, partition)
 
-  extract_compressed_image(target_slot_number, partition, cloudlog)
+  extract_compressed_image(target_slot_number, partition, cloudlog, progress_callback)
 
   # Write hash after successful flash
   if not full_check:
@@ -222,7 +235,7 @@ def swap(manifest_path: str, target_slot_number: int, cloudlog) -> None:
       cloudlog.error(f"Swap failed {out}")
 
 
-def flash_agnos_update(manifest_path: str, target_slot_number: int, cloudlog, standalone=False) -> None:
+def flash_agnos_update(manifest_path: str, target_slot_number: int, cloudlog, standalone=False, progress_callback=None) -> None:
   update = json.load(open(manifest_path))
 
   cloudlog.info(f"Target slot {target_slot_number}")
@@ -235,7 +248,7 @@ def flash_agnos_update(manifest_path: str, target_slot_number: int, cloudlog, st
 
     for retries in range(10):
       try:
-        flash_partition(target_slot_number, partition, cloudlog, standalone)
+        flash_partition(target_slot_number, partition, cloudlog, standalone, progress_callback)
         success = True
         break
 
