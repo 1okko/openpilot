@@ -98,6 +98,7 @@ else:
 
 # Override to highest thermal band when offroad and above this temp
 OFFROAD_DANGER_TEMP = 85 if HARDWARE.get_device_type() == "mici" else 75
+STARTUP_TEMP_GRACE_S = 20.0
 
 prev_offroad_states: dict[str, tuple[bool, str | None]] = {}
 
@@ -238,6 +239,7 @@ def hardware_thread(end_event, hw_queue) -> None:
   thermal_config = HARDWARE.get_thermal_config()
 
   fan_controller = FanController(int(1./DT_HW))
+  startup_ts = time.monotonic()
   chestnut = Chestnut()
   big_model_available = (MODELS_DIR / 'big_driving_supercombo.onnx').is_file() or chestnut_compiled()
 
@@ -307,23 +309,36 @@ def hardware_thread(end_event, hw_queue) -> None:
     set_offroad_alert_if_changed("Offroad_ChestnutBranch", chestnut_needs_switch,
                                  extra_text=chestnut_target if chestnut_needs_switch else None)
 
+    # Suppress the boot-time CPU temperature spike in the UI and fan control.
+    startup_temp_grace = time.monotonic() - startup_ts < STARTUP_TEMP_GRACE_S
+
     # this subset is only used for offroad
     temp_sources = [
       msg.deviceState.memoryTempC,
       max(msg.deviceState.cpuTempC, default=0.),
       max(msg.deviceState.gpuTempC, default=0.),
     ]
-    offroad_comp_temp = offroad_temp_filter.update(max(temp_sources))
+    offroad_raw_temp = max(temp_sources)
+    if startup_temp_grace:
+      offroad_raw_temp = min(offroad_raw_temp, 70.0)
+    offroad_comp_temp = offroad_temp_filter.update(offroad_raw_temp)
 
     # this drives the thermal status while onroad
     temp_sources.append(max(msg.deviceState.pmicTempC, default=0.))
-    all_comp_temp = all_temp_filter.update(max(temp_sources))
+    all_raw_temp = max(temp_sources)
+    if startup_temp_grace:
+      all_raw_temp = min(all_raw_temp, 70.0)
+    all_comp_temp = all_temp_filter.update(all_raw_temp)
+
     msg.deviceState.maxTempC = all_comp_temp
 
-    msg.deviceState.fanSpeedPercentDesired = fan_controller.update(all_comp_temp, onroad_conditions["ignition"])
+    fan_speed = fan_controller.update(all_comp_temp, onroad_conditions["ignition"])
+    msg.deviceState.fanSpeedPercentDesired = min(fan_speed, 30) if startup_temp_grace else fan_speed
 
     is_offroad_for_5_min = (started_ts is None) and ((not started_seen) or (off_ts is None) or (time.monotonic() - off_ts > 60 * 5))
-    if is_offroad_for_5_min and offroad_comp_temp > OFFROAD_DANGER_TEMP:
+    if startup_temp_grace:
+      thermal_status = ThermalStatus.ok
+    elif is_offroad_for_5_min and offroad_comp_temp > OFFROAD_DANGER_TEMP:
       # if device is offroad and already hot without the extra onroad load,
       # we want to cool down first before increasing load
       thermal_status = ThermalStatus.critical
@@ -372,7 +387,7 @@ def hardware_thread(end_event, hw_queue) -> None:
     # if the temperature enters the danger zone, go offroad to cool down
     onroad_conditions["device_temp_good"] = thermal_status < ThermalStatus.critical
     extra_text = f"{offroad_comp_temp:.1f}C"
-    show_alert = (not onroad_conditions["device_temp_good"] or not startup_conditions["device_temp_engageable"]) and onroad_conditions["ignition"]
+    show_alert = (not onroad_conditions["device_temp_good"] or not startup_conditions["device_temp_engageable"]) and onroad_conditions["ignition"] and not startup_temp_grace
     set_offroad_alert_if_changed("Offroad_TemperatureTooHigh", show_alert, extra_text=extra_text)
 
     if show_alert:
