@@ -77,7 +77,6 @@ class SoftwareLayout(Widget):
       self._version_item,
       self._download_btn,
       self._install_btn,
-      button_item(lambda: tr("Uninstall"), lambda: tr("UNINSTALL"), callback=self._on_uninstall),
     ], line_separator=True, spacing=0)
 
   def show_event(self):
