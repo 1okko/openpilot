@@ -1,7 +1,6 @@
 import pyray as rl
 from dataclasses import dataclass
 from openpilot.common.constants import CV
-from openpilot.selfdrive.ui.onroad.exp_button import ExpButton
 from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus
 from openpilot.system.ui.lib.application import gui_app, FontWeight
 from openpilot.system.ui.lib.multilang import tr
@@ -70,7 +69,6 @@ class HudRenderer(Widget):
     self._font_bold: rl.Font = gui_app.font(FontWeight.BOLD)
     self._font_medium: rl.Font = gui_app.font(FontWeight.MEDIUM)
 
-    self._exp_button: ExpButton = ExpButton(UI_CONFIG.button_size, UI_CONFIG.wheel_icon_size)
 
   def _update_state(self) -> None:
     """Update HUD state based on car state and controls state."""
@@ -112,17 +110,11 @@ class HudRenderer(Widget):
       COLORS.HEADER_GRADIENT_END,
     )
 
-    if self.is_cruise_available:
-      self._draw_set_speed(rect)
-
+    # MAX set-speed and experimental/wheel icons are intentionally hidden on this build.
     self._draw_current_speed(rect)
 
-    button_x = rect.x + rect.width - UI_CONFIG.border_size - UI_CONFIG.button_size
-    button_y = rect.y + UI_CONFIG.border_size
-    self._exp_button.render(rl.Rectangle(button_x, button_y, UI_CONFIG.button_size, UI_CONFIG.button_size))
-
   def user_interacting(self) -> bool:
-    return self._exp_button.is_pressed
+    return False
 
   def _draw_set_speed(self, rect: rl.Rectangle) -> None:
     """Draw the MAX speed indicator box."""
