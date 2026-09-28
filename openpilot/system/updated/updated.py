@@ -70,6 +70,57 @@ def run(cmd: list[str], cwd: str | None = None) -> str:
   return subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT, encoding='utf8')
 
 
+def format_speed(bytes_per_sec: float) -> str:
+  if bytes_per_sec >= 1024 ** 3:
+    return f'{bytes_per_sec / 1024 ** 3:.2f} GiB/s'
+  if bytes_per_sec >= 1024 ** 2:
+    return f'{bytes_per_sec / 1024 ** 2:.2f} MiB/s'
+  if bytes_per_sec >= 1024:
+    return f'{bytes_per_sec / 1024:.2f} KiB/s'
+  return f'{bytes_per_sec:.0f} B/s'
+
+
+def parse_git_progress(line: str) -> tuple[int, str] | None:
+  # Example: Receiving objects:  42% (123/293), 1.20 MiB | 3.40 MiB/s
+  match = re.search(r'Receiving objects:\s+(\d+)%.*?\|\s*([\d.]+)\s*([KMG]iB/s)', line)
+  if match is None:
+    match = re.search(r'Receiving objects:\s+(\d+)%', line)
+    return (int(match.group(1)), '') if match else None
+  return int(match.group(1)), f'{match.group(2)} {match.group(3)}'
+
+
+def run_with_progress(cmd: list[str], cwd: str | None, progress_callback) -> str:
+  proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0)
+  assert proc.stdout is not None
+
+  output = bytearray()
+  pending = bytearray()
+  while True:
+    chunk = proc.stdout.read(4096)
+    if not chunk:
+      break
+    output.extend(chunk)
+    pending.extend(chunk)
+    while True:
+      indices = [i for i in (pending.find(b'\r'), pending.find(b'\n')) if i >= 0]
+      if not indices:
+        break
+      idx = min(indices)
+      line = bytes(pending[:idx])
+      del pending[:idx + 1]
+      if line:
+        progress_callback(line.decode('utf8', 'replace').strip())
+
+  if pending:
+    progress_callback(bytes(pending).decode('utf8', 'replace').strip())
+
+  ret = proc.wait()
+  text = output.decode('utf8', 'replace')
+  if ret != 0:
+    raise subprocess.CalledProcessError(ret, cmd, output=text)
+  return text
+
+
 def set_consistent_flag(consistent: bool) -> None:
   os.sync()
   consistent_file = Path(os.path.join(FINALIZED, ".overlay_consistent"))
@@ -195,6 +246,21 @@ def finalize_update() -> None:
 def handle_agnos_update() -> None:
   from openpilot.common.hardware.comma.agnos import flash_agnos_update, get_target_slot_number
 
+  params = Params()
+  last_progress = [-1, 0.0]
+
+  def on_progress(name: str, downloaded: int, total: int, speed: float) -> None:
+    percent = int(downloaded * 100 / total) if total else -1
+    now = time.monotonic()
+    if percent == last_progress[0] and now - last_progress[1] < 0.5:
+      return
+    last_progress[0] = percent
+    last_progress[1] = now
+
+    progress = f'{percent}%' if percent >= 0 else f'{downloaded // (1024 * 1024)} MiB'
+    speed_text = f' {format_speed(speed)}' if speed > 0 else ''
+    params.put('UpdaterState', f'downloading... {name} {progress}{speed_text}', block=True)
+
   cur_version = HARDWARE.get_os_version()
   updated_version = run(["bash", "-c", r"unset AGNOS_VERSION && source launch_env.sh && \
                           echo -n $AGNOS_VERSION"], OVERLAY_MERGED).strip()
@@ -210,7 +276,7 @@ def handle_agnos_update() -> None:
 
   manifest_path = os.path.join(OVERLAY_MERGED, "openpilot/system/hardware/comma/agnos.json")
   target_slot_number = get_target_slot_number()
-  flash_agnos_update(manifest_path, target_slot_number, cloudlog)
+  flash_agnos_update(manifest_path, target_slot_number, cloudlog, progress_callback=on_progress)
 
 
 class Updater:
@@ -360,6 +426,23 @@ class Updater:
 
     self.params.put("UpdaterState", "downloading...", block=True)
 
+    last_progress = [-1, 0.0]
+
+    def on_git_progress(line: str) -> None:
+      parsed = parse_git_progress(line)
+      if parsed is None:
+        return
+      percent, speed = parsed
+      now = time.monotonic()
+      if percent == last_progress[0] and now - last_progress[1] < 0.5:
+        return
+      last_progress[0] = percent
+      last_progress[1] = now
+      suffix = f' {percent}%'
+      if speed:
+        suffix += f' {speed}'
+      self.params.put("UpdaterState", f"downloading...{suffix}", block=True)
+
     # TODO: cleanly interrupt this and invalidate old update
     set_consistent_flag(False)
     self.params.put_bool("UpdateAvailable", False, block=True)
@@ -369,7 +452,7 @@ class Updater:
     run(["git", "config", "--replace-all", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"], OVERLAY_MERGED)
 
     branch = self.target_branch
-    git_fetch_output = run(["git", "fetch", "origin", branch], OVERLAY_MERGED)
+    git_fetch_output = run_with_progress(["git", "fetch", "--progress", "origin", branch], OVERLAY_MERGED, on_git_progress)
     cloudlog.info("git fetch success: %s", git_fetch_output)
 
     cloudlog.info("git reset in progress")
