@@ -403,10 +403,23 @@ async def execute_messaging():
   """获取 messaging 实时数据：进程状态、设备状态、车辆状态、控制状态
   使用 subprocess 独立进程执行同步 SubMaster 操作，避免在 async 协程中阻塞事件循环"""
   try:
-    script = r'''import sys, json
-sys.path.insert(0, "/data/openpilot")
-from cereal.messaging import SubMaster, pub_sock, recv_one_or_none
-from cereal import log
+    script = r'''import sys, json, os
+# 自动适配新旧 sunnypilot 布局：
+#   旧布局: /data/openpilot/cereal
+#   新布局: /data/openpilot/openpilot/cereal （包根为 /data/openpilot/openpilot）
+_ROOTS = ["/data/openpilot/openpilot", "/data/openpilot"]
+for _r in _ROOTS:
+  if os.path.isdir(os.path.join(_r, "cereal")):
+    if _r not in sys.path:
+      sys.path.insert(0, _r)
+    break
+try:
+  from cereal.messaging import SubMaster, pub_sock, recv_one_or_none
+  from cereal import log
+except ModuleNotFoundError:
+  # 兜底：显式 openpilot. 前缀导入
+  from openpilot.cereal.messaging import SubMaster, pub_sock, recv_one_or_none
+  from openpilot.cereal import log
 import time
 
 # 分别订阅每个 topic 并单独等待，避免一次 update 等不全
