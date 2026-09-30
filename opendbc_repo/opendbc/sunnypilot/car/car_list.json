@@ -600,6 +600,16 @@
     ],
     "package": "Co-Pilot360 Assist+"
   },
+  "Ford Edge 2022": {
+    "platform": "FORD_EDGE_MK2",
+    "make": "Ford",
+    "brand": "ford",
+    "model": "Edge",
+    "year": [
+      "2022"
+    ],
+    "package": "Co-Pilot360 Assist+"
+  },
   "Ford Escape 2020-22": {
     "platform": "FORD_ESCAPE_MK4",
     "make": "Ford",
