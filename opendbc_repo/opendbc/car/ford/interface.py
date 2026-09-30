@@ -56,6 +56,10 @@ class CarInterface(CarInterfaceBase):
       ret.safetyConfigs[-1].safetyParam |= FordSafetyFlags.LONG_CONTROL.value
       ret.openpilotLongitudinalControl = True
 
+    if ret.flags & FordFlags.ALT_STEER_ANGLE:
+      # Edge MK2 has RCM Yaw_Data_FD1 counter increments of 5 instead of 1
+      ret.safetyConfigs[-1].safetyParam |= FordSafetyFlags.YAW_COUNTER_STEP_5.value
+
     if ret.flags & FordFlags.CANFD:
       ret.safetyConfigs[-1].safetyParam |= FordSafetyFlags.CANFD.value
 

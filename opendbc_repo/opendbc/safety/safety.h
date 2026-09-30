@@ -152,7 +152,9 @@ static void update_addr_timestamp(RxCheck addr_list[], int index) {
 
 static void update_counter(RxCheck addr_list[], int index, uint8_t counter) {
   if (index != -1) {
-    uint8_t expected_counter = (addr_list[index].status.last_counter + 1U) % (addr_list[index].msg[addr_list[index].status.index].max_counter + 1U);
+    const CanMsgCheck *msg_check = &addr_list[index].msg[addr_list[index].status.index];
+    const uint8_t counter_step = msg_check->counter_step != 0U ? msg_check->counter_step : 1U;
+    uint8_t expected_counter = (addr_list[index].status.last_counter + counter_step) % (msg_check->max_counter + 1U);
     addr_list[index].status.wrong_counters += (expected_counter == counter) ? -1 : 1;
     addr_list[index].status.wrong_counters = SAFETY_CLAMP(addr_list[index].status.wrong_counters, 0, MAX_WRONG_COUNTERS);
     addr_list[index].status.last_counter = counter;
