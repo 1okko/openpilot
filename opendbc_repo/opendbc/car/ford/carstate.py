@@ -11,7 +11,6 @@ ButtonType = structs.CarState.ButtonEvent.Type
 GearShifter = structs.CarState.GearShifter
 TransmissionType = structs.CarParams.TransmissionType
 
-FordFlagsALT_STEER_ANGLE = True
 
 class CarState(CarStateBase, MadsCarState):
   def __init__(self, CP, CP_SP):
@@ -19,10 +18,16 @@ class CarState(CarStateBase, MadsCarState):
     MadsCarState.__init__(self, CP, CP_SP)
     can_define = CANDefine(DBC[CP.carFingerprint][Bus.pt])
     if CP.transmissionType == TransmissionType.automatic:
-      self.shifter_values = can_define.dv["PowertrainData_10"]["TrnRng_D_Rq"]
+      if CP.flags & FordFlags.CANFD:
+        self.shifter_values = can_define.dv["Gear_Shift_by_Wire_FD1"]["TrnRng_D_RqGsm"]
+      elif CP.flags & FordFlags.ALT_STEER_ANGLE:
+        self.shifter_values = can_define.dv["TransGearData"]["GearLvrPos_D_Actl"]
+      else:
+        self.shifter_values = can_define.dv["PowertrainData_10"]["TrnRng_D_Rq"]
 
     self.distance_button = 0
     self.lc_button = 0
+    self.steering_angle_offset_deg = 0.0
 
   def update(self, can_parsers) -> tuple[structs.CarState, structs.CarStateSP]:
     cp = can_parsers[Bus.pt]
@@ -31,12 +36,13 @@ class CarState(CarStateBase, MadsCarState):
     ret = structs.CarState()
     ret_sp = structs.CarStateSP()
 
-    if FordFlagsALT_STEER_ANGLE:
+    if self.CP.flags & FordFlags.ALT_STEER_ANGLE:
       self.vehicle_sensors_valid = (
         int((cp.vl["ParkAid_Data"]["ExtSteeringAngleReq2"] + 1000) * 10) not in (32766, 32767)
         and cp.vl["ParkAid_Data"]["EPASExtAngleStatReq"] == 0
         and cp.vl["ParkAid_Data"]["ApaSys_D_Stat"] in (0, 1)
       )
+      ret.vehicleSensorsInvalid = not self.vehicle_sensors_valid
     else:
       # Occasionally on startup, the ABS module recalibrates the steering pinion offset, so we need to block engagement
       # The vehicle usually recovers out of this state within a minute of normal driving
@@ -56,9 +62,9 @@ class CarState(CarStateBase, MadsCarState):
     ret.parkingBrake = cp.vl["DesiredTorqBrk"]["PrkBrkStatus"] in (1, 2)
 
     # steering wheel
-    if FordFlagsALT_STEER_ANGLE:
+    if self.CP.flags & FordFlags.ALT_STEER_ANGLE:
       steering_angle_init = cp.vl["SteeringPinion_Data_Alt"]["StePinRelInit_An_Sns"]
-      if self.vehicle_sensors_valid:
+      if not ret.vehicleSensorsInvalid:
         steering_angle_est = cp.vl["ParkAid_Data"]["ExtSteeringAngleReq2"]
         self.steering_angle_offset_deg = steering_angle_est - steering_angle_init
       ret.steeringAngleDeg = steering_angle_init + self.steering_angle_offset_deg
@@ -87,7 +93,12 @@ class CarState(CarStateBase, MadsCarState):
 
     # gear
     if self.CP.transmissionType == TransmissionType.automatic:
-      gear = self.shifter_values.get(cp.vl["PowertrainData_10"]["TrnRng_D_Rq"])
+      if self.CP.flags & FordFlags.CANFD:
+        gear = self.shifter_values.get(cp.vl["Gear_Shift_by_Wire_FD1"]["TrnRng_D_RqGsm"])
+      elif self.CP.flags & FordFlags.ALT_STEER_ANGLE:
+        gear = self.shifter_values.get(cp.vl["TransGearData"]["GearLvrPos_D_Actl"])
+      else:
+        gear = self.shifter_values.get(cp.vl["PowertrainData_10"]["TrnRng_D_Rq"])
       ret.gearShifter = self.parse_gear_shifter(gear)
     elif self.CP.transmissionType == TransmissionType.manual:
       if bool(cp.vl["BCM_Lamp_Stat_FD1"]["RvrseLghtOn_B_Stat"]):
