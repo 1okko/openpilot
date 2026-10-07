@@ -1,6 +1,6 @@
-import math
+import math, functools
 from typing import Any
-from tinygrad.uop.ops import PatternMatcher, UPat, GroupOp, Ops, UOp, AxisType, KernelInfo, ParamArg
+from tinygrad.uop.ops import PatternMatcher, UPat, GroupOp, Ops, UOp, AxisType, KernelInfo, ParamArg, CallInfo, OPAQUE_CALL_BODIES
 from tinygrad.uop.render import print_uops, pyrender
 from tinygrad.dtype import DType, dtypes, AddrSpace, Invalid, ConstFloat
 from tinygrad.helpers import DEBUG, Context, SPEC, Metadata, panic, CHECK_OOB, all_same, is_image_shape
@@ -20,13 +20,6 @@ def validate_index(uidx:UOp, gate:UOp|None=None):
 
   # We can use UOp min/max to do a faster check, but it can give false positive since its not an exact bound and doesn't consider the mask
   if 0<=idx.vmin and idx.vmax<sz: return True
-
-  # TODO: validate these
-  # WEBGPU has a BITCAST in the index, PTX casts pointer to long
-  # VECTORIZE can't be properly modeled in z3 since it doesn't support vectors
-  # don't descend into PARAM shape metadata; only the PARAM value participates in index arithmetic
-  for x in idx.toposort(gate=lambda x: x.op is not Ops.PARAM) | gate.toposort(gate=lambda x: x.op is not Ops.PARAM):
-    if x.op in {Ops.BITCAST, Ops.STACK}: return True
 
   # if all is good and CHECK_OOB=1, validate with z3
   from tinygrad.uop.validate import validate_index_with_z3
@@ -94,17 +87,19 @@ spec_shared = PatternMatcher([
   (UPat(Ops.GROUP, dtypes.void, src=UPat((Ops.GROUP, Ops.STORE, Ops.NOOP, Ops.INS, Ops.END))), lambda: True),
 
   # AFTER on Movement Op, PARAM, BUFFER, CONTIGUOUS, RETURNED, or another AFTER
-  (UPat(Ops.AFTER, src=(UPat(GroupOp.Movement.union({Ops.PARAM, Ops.BUFFER, Ops.CONTIGUOUS, Ops.INDEX,
-                                                     Ops.AFTER, Ops.UNSHARD, Ops.BITCAST, Ops.INS, Ops.RETURNED})),),
+  (UPat(Ops.AFTER, src=(UPat(GroupOp.Movement.union({Ops.PARAM, Ops.BUFFER, Ops.COPY, Ops.INDEX,
+                                                     Ops.AFTER, Ops.UNSHARD, Ops.BITCAST, Ops.INS})),),
         allow_any_len=True), lambda: True),
 
   # CUSTOM (inline and non inline): the arg is the source string and the dtype it produces, void for a bare statement
   (UPat((Ops.CUSTOMI, Ops.CUSTOM), name="x"),
    lambda x: isinstance(x.arg, tuple) and len(x.arg) == 2 and isinstance(x.arg[0], str) and isinstance(x.arg[1], DType)),
 
-  # CALL of an external function
-  (UPat(Ops.CALL, src=(UPat(),), allow_any_len=True, name="x"),
-   lambda x: matches_dtype(x.src[0], dtypes.uint64) and isinstance(x.arg, DType) if x.src[0].dtype is not dtypes.void else None),
+  # a CUSTOM_FUNCTION with srcs is the body of an external call, holding the callee (a function pointer)
+  (UPat(Ops.CUSTOM_FUNCTION, name="x", allow_any_len=True), lambda x: isinstance(x.arg, str)),
+  # CALL: the body is always an opaque body, the arg is a CallInfo stating the (possibly void) dtype
+  (UPat(Ops.CALL, src=(UPat(tuple(OPAQUE_CALL_BODIES)),), allow_any_len=True, name="x"),
+   lambda x: isinstance(x.arg, CallInfo) and x.dtype is x.arg.dtype),
 
   # pattern compiler IR ops (not in tensor/program graphs, but spec-compliant)
   (UPat(Ops.PYLITERAL), lambda: True),
@@ -122,8 +117,10 @@ spec_shared = PatternMatcher([
   (UPat((Ops.INDEX, Ops.SHRINK), name="uidx").or_casted().store(UPat()), validate_index),
   (UPat((Ops.INDEX, Ops.SHRINK), name="uidx").or_casted().store(UPat(), UPat.var("gate", dtype=dtypes.bool)), validate_index),
 
-  # STORE in tensor graph: store a value into a target
-  (UPat(Ops.STORE, dtypes.void, (UPat(name="x"), UPat())), lambda x: True),
+  # STORE: the target must be storage or a CONTIGUOUS realization point (or an AFTER/BITCAST/view of one);
+  # CONTIGUOUS targets are written into the buffer the CONTIGUOUS creates. INDEX stores are checked above
+  (UPat(Ops.STORE, dtypes.void, (UPat(name="x"), UPat())), lambda x:
+   True if (b:=x.storage_base).op in {Ops.BUFFER, Ops.PARAM, Ops.COPY} else None if b.op is Ops.INDEX else False),
 
   # WMMA has a <a, b, acc>
   (UPat(Ops.WMMA, src=(UPat(), UPat(), UPat()), name="x"), lambda x: isinstance(x.arg, tuple) and len(x.arg) == 5),
@@ -138,7 +135,7 @@ spec_tensor = PatternMatcher([
 
   # BUFFER
   (UPat(Ops.BUFFER, src=(), name="buf"), lambda buf:
-   (isinstance(buf.dtype, DType) and isinstance(buf.arg.size, int) and is_device(buf.arg.device))
+   True if buf.is_unbound else (isinstance(buf.dtype, DType) and isinstance(buf.arg.size, int) and is_device(buf.arg.device))
    if isinstance(buf.arg, ParamArg) and buf.addrspace is AddrSpace.GLOBAL else None),
 
   # a Variable is a 0-d ALU BUFFER with a value range and no device
@@ -146,12 +143,6 @@ spec_tensor = PatternMatcher([
 
   # custom function
   (UPat(Ops.CUSTOM_FUNCTION, name="x"), lambda x: isinstance(x.arg, str)),
-
-  # CALL
-  (UPat(Ops.CALL, dtypes.void, src=(UPat((Ops.SINK, Ops.LINEAR, Ops.PROGRAM, Ops.COPY, Ops.CUSTOM_FUNCTION)),), allow_any_len=True), lambda: True),
-
-  # RETURNED is a placeholder for a buffer a call writes and returns: it has a size in the arg, no shape input
-  (UPat(Ops.RETURNED, src=(), name="x"), lambda x: isinstance(x.arg, ParamArg)),
 
   # SPECIAL is index before index lowering. custom_kernel currently has this
   (UPat(Ops.SPECIAL, src=(UPat(dtype=dtypes.weakint),), name="s"), lambda s: isinstance(s.arg, str)),
@@ -179,7 +170,7 @@ spec_tensor = PatternMatcher([
   (UPat(Ops.MSTACK, name="x"), lambda x: all(isinstance(s.device, str) for s in x.src) or (all_same(x.src) and x.src[0].device is None)),
 
   # CONTIGUOUS ensures the source UOp realizes
-  (UPat((Ops.DETACH, Ops.CONTIGUOUS, Ops.CONTIGUOUS_BACKWARD), src=(UPat(),), arg=None), lambda: True),
+  (UPat((Ops.DETACH, Ops.CONTIGUOUS_BACKWARD), src=(UPat(),), arg=None), lambda: True),
 
   # TODO: this should not be here. STAGE is transformed to BUFFER later
   (UPat(Ops.STAGE, src=(UPat(),), allow_any_len=True), lambda: True),
@@ -200,8 +191,8 @@ spec_program = PatternMatcher([
   (UPat(GroupOp.All, name="x"), lambda x: False if x.op is not Ops.CAST and any(s.op is Ops.CONST for s in x.src) else None),
   (UPat(GroupOp.All-{Ops.CONST}, dtypes.weaks), lambda: False),
 
-  # allow special SHRINK
-  (UPat(Ops.SHRINK, src=(UPat((Ops.PARAM, Ops.BUFFER, Ops.AFTER)), UPat(), UPat(Ops.CONST).or_casted())), lambda: True),
+  # allow special SHRINK of a buffer or its bitcast
+  (UPat(Ops.SHRINK, src=(UPat((Ops.PARAM, Ops.BUFFER, Ops.AFTER)).or_bitcasted(), UPat(), UPat.cvar().or_casted())), lambda: True),
 
   # movement ops are not allowed in programs
   (UPat(GroupOp.Movement), lambda: False),
@@ -261,8 +252,8 @@ spec_kernel_graph = PatternMatcher([
   # mstack/mselect
   (UPat(Ops.MSTACK, name="x"), lambda x: all(isinstance(s.device, str) for s in x.src) or (all_same(x.src) and x.src[0].device is None)),
   (UPat(Ops.MSELECT, name="x"), lambda x: isinstance(x.src[0].device, tuple) and x.arg < len(x.src[0].device)),
-  # all calls are on various sinks
-  (UPat(Ops.CALL, src=(UPat((Ops.SINK, Ops.LINEAR, Ops.PROGRAM, Ops.CUSTOM_FUNCTION)),), allow_any_len=True), lambda: True),
+  # all calls are on opaque bodies
+  (UPat(Ops.CALL, src=(UPat(tuple(OPAQUE_CALL_BODIES)),), allow_any_len=True), lambda: True),
   # after on PARAM or AFTER
   (UPat(Ops.AFTER, src=(UPat(GroupOp.Movement.union({Ops.PARAM, Ops.AFTER, Ops.BUFFER, Ops.MSTACK, Ops.MSELECT, Ops.BITCAST, Ops.RESHAPE})),),
         allow_any_len=True), lambda: True),
@@ -270,17 +261,19 @@ spec_kernel_graph = PatternMatcher([
 
 # **** pyrender (move this) ****
 
-# late imports to avoid circular import
-from tinygrad.codegen.opt import Opt, OptOps
-from tinygrad.schedule.rangeify import BufferizeOpts
-from tinygrad.renderer import Estimates
-glbls:dict[str, Any] = {"inf": math.inf, "nan": math.nan, "KernelInfo": KernelInfo, "Metadata": Metadata,
-                        "UOp": UOp, "dtypes": dtypes, "Ops": Ops, "AxisType": AxisType, "Invalid": Invalid,
-                        "Opt": Opt, "OptOps": OptOps, "BufferizeOpts": BufferizeOpts, "AddrSpace": AddrSpace, "panic": panic,
-                        "ConstFloat": ConstFloat, "ParamArg": ParamArg, "Estimates": Estimates}
+# circular-import-safe eval globals for pyrender round-tripping (lazy: codegen/schedule/renderer are heavy)
+@functools.cache
+def pyrender_globals() -> dict[str, Any]:
+  from tinygrad.codegen.opt import Opt, OptOps
+  from tinygrad.schedule.rangeify import BufferizeOpts
+  from tinygrad.renderer import Estimates
+  return {"inf": math.inf, "nan": math.nan, "KernelInfo": KernelInfo, "Metadata": Metadata,
+          "UOp": UOp, "dtypes": dtypes, "Ops": Ops, "AxisType": AxisType, "Invalid": Invalid,
+          "Opt": Opt, "OptOps": OptOps, "BufferizeOpts": BufferizeOpts, "AddrSpace": AddrSpace, "panic": panic,
+          "ConstFloat": ConstFloat, "ParamArg": ParamArg, "Estimates": Estimates}
 def eval_pyrender(code:str) -> UOp:
   lcls:dict[str, Any] = {}
-  exec(code, glbls, lcls)
+  exec(code, pyrender_globals(), lcls)
   return lcls['ast']
 
 def test_pyrender(test_ast:UOp, assert_parents=True):

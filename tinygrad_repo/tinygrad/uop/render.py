@@ -79,7 +79,7 @@ def render_marg(ctx,x:UOp):
   return f"({','.join(pieces)})" if len(pieces) != 1 else f"({pieces[0]},)"
 
 sugar = {Ops.SINK, Ops.END, Ops.STORE, Ops.LOAD, Ops.SQRT, Ops.INDEX, Ops.REDUCE, Ops.AFTER, Ops.THREEFRY,
-         Ops.RECIPROCAL, Ops.EXP2, Ops.LOG2, Ops.SIN, Ops.CONTIGUOUS, Ops.BARRIER, Ops.DETACH}
+         Ops.RECIPROCAL, Ops.EXP2, Ops.LOG2, Ops.SIN, Ops.BARRIER, Ops.DETACH}
 pm_pyrender_extra = PatternMatcher([
   (UPat(Ops.CONST, src=(), name="x"), lambda x: f"UOp.const({x.val})"),
   (UPat((Ops.CAST, Ops.BITCAST), name="x"), lambda ctx,x: f"{ctx[x.src[0]]}.{x.op.name.lower()}({x.dtype})" if x.dtype != x.src[0].dtype else None),
@@ -139,7 +139,7 @@ def pyrender(ast:UOp) -> str:
 
   cmap = consumer_map_from_toposort(lst)
   not_rendered = {Ops.CONST}
-  always_rendered = {Ops.PARAM, Ops.LOAD, Ops.SPECIAL, Ops.RANGE, Ops.CONTIGUOUS, Ops.STACK,
+  always_rendered = {Ops.PARAM, Ops.LOAD, Ops.SPECIAL, Ops.RANGE, Ops.STACK,
                      Ops.BUFFER, Ops.COPY, Ops.CALL, Ops.WHERE, Ops.END}
 
   to_render: set[UOp] = {ast}
@@ -149,6 +149,8 @@ def pyrender(ast:UOp) -> str:
     if u.op is Ops.STORE: to_render.add(u.src[1])
     if u.op is Ops.REDUCE: to_render.add(u.src[0])
     if u.op is Ops.CALL and u.src[0].dtype is dtypes.void: raise NotImplementedError("call can't be pyrendered")
+    # a BUFFER carrying a device Buffer can't be pyrendered: the Buffer object can't be reconstructed from code
+    if u.op is Ops.BUFFER and isinstance(u.arg, ParamArg) and u.arg.buffer is not None: raise NotImplementedError("buffer can't be pyrendered")
     if u.op in not_rendered: continue
     # checking the consumers is not enough, you have to make sure it's not used twice by the one consumer
     if len(cmap[u]) == 1 and len([x for x in list(cmap[u].keys())[0].src if x is u]) == 1 and u.op not in always_rendered: continue

@@ -11,11 +11,12 @@ from tinygrad.engine.worker import get_worker_pool, terminate_worker_pool
 from tinygrad.codegen import to_program
 from tinygrad.codegen.opt.postrange import Scheduler
 
-actions = [Opt(op=OptOps.UPCAST, axis=axis, arg=amt) for amt in [0,2,3,4,5,7] for axis in range(10)]
-actions += [Opt(op=OptOps.LOCAL, axis=axis, arg=amt) for amt in [0,2,3,4,8,13,16,29] for axis in range(8)]
-actions += [Opt(op=OptOps.GROUPTOP, axis=axis, arg=amt) for amt in [13,16,28,29,32,49,64,256] for axis in range(8)]
+actions = [Opt(op=OptOps.SPLIT, axis=axis, arg=(amt, at)) for at in (AxisType.UPCAST, AxisType.UNROLL) for amt in [0,2,3,4,5,7] for axis in range(10)]
+actions += [Opt(op=OptOps.SPLIT, axis=axis, arg=(amt, at)) for at in (AxisType.LOCAL, AxisType.GROUP_REDUCE)
+            for amt in [0,2,3,4,8,13,16,29] for axis in range(8)]
+actions += [Opt(op=OptOps.SPLIT, axis=axis, arg=(amt, AxisType.GROUP_REDUCE, True)) for amt in [13,16,28,29,32,49,64,256] for axis in range(8)]
 if getenv("BEAM_PADTO", 0): actions += [Opt(op=OptOps.PADTO, axis=axis, arg=amt) for amt in [32] for axis in range(7)]
-actions += [Opt(op=OptOps.LOCAL, axis=0, arg=32)]
+actions += [Opt(op=OptOps.SPLIT, axis=0, arg=(32, at)) for at in (AxisType.LOCAL, AxisType.GROUP_REDUCE)]
 actions += [Opt(op=OptOps.TC, axis=0, arg=(-1, 0, getenv("TC", 1)))]
 # covers resnet kernels (3 global * 3 reduce)
 actions += [Opt(op=OptOps.TC, axis=axis, arg=(-1, getenv("TC_OPT", 2), getenv("TC", 1))) for axis in range(9)]
@@ -88,11 +89,12 @@ def get_kernel_actions(s:Scheduler, include_0=True, max_up:int|None=None) -> dic
     if a.axis is not None and a.op is not OptOps.TC:
       try: ax = s.real_axis(a.op, a.axis)
       except KernelOptError: continue
-      if (ax >= s.shape_len) or (s.full_shape[ax] == a.arg and Opt(a.op, a.axis, 0) in kernel_actions): continue
+      if (ax >= s.shape_len) or (a.op is OptOps.SPLIT and isinstance(arg:=a.arg, tuple) and s.full_shape[ax] == arg[0]
+                                 and replace(a, arg=(0,)+arg[1:]) in kernel_actions): continue
     s2 = s.copy()
     try:
       s2.apply_opt(a)
-      up, lcl, tc_up = 1, 1, prod(tc.dims)//tc.threads if hasattr(s2, 'tensor_core') and (tc:=s2.tensor_core) else 1
+      up, lcl, tc_up = 1, 1, prod(tc.dims)//tc.threads if (tc:=s2.tensor_core) else 1
       for x,t in zip(s2.full_shape, s2.axis_types):
         if t in (AxisType.UPCAST, AxisType.UNROLL): up *= x
         elif t in (AxisType.WARP, AxisType.LOCAL, AxisType.GROUP_REDUCE): lcl *= x
@@ -104,9 +106,9 @@ def get_kernel_actions(s:Scheduler, include_0=True, max_up:int|None=None) -> dic
   return acted
 
 BEAM_DEBUG = getenv("BEAM_DEBUG")
-def beam_search(s:Scheduler, rawbufs:list[Buffer], var_vals:dict[str,int], amt:int, allow_test_size=True, disable_cache=IGNORE_BEAM_CACHE.value):
+def beam_search(s:Scheduler, rawbufs:list[Buffer], var_vals:dict[str,int], amt:int, allow_test_size=True):
   key = {"ast": s.ast.key, "amt": amt, "allow_test_size": allow_test_size, "device": s.ren.target.device, "suffix": s.ren.suffix}
-  if not disable_cache and CACHELEVEL >= 1 and (val:=diskcache_get("beam_search", key)) is not None:
+  if not IGNORE_BEAM_CACHE and CACHELEVEL >= 1 and (val:=diskcache_get("beam_search", key)) is not None:
     ret = s.copy()
     for o in val[len(s.applied_opts):]: ret.apply_opt(o)
     return ret

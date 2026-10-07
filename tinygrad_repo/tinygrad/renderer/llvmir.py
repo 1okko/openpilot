@@ -1,5 +1,5 @@
 import math, struct, sys
-from tinygrad.codegen.opt import tc
+from tinygrad.renderer import tc
 from tinygrad.renderer import Renderer
 from tinygrad.renderer.cstyle import HIPRenderer, create_non_native_float_pats, pm_manual_bf16_cast
 from tinygrad.codegen.decomp.transcendental import xexp2, xlog2
@@ -152,7 +152,7 @@ class LLVMRenderer(Renderer):
 
   extra_matcher = create_non_native_float_pats((dtypes.bfloat16,)) + pm_manual_bf16_cast
   def _render_fn(self, name:str, args:list[tuple[str,UOp]], kernel:list[str], prefix:list[str]|None=None) -> str:
-    # NOTE: CPUAllocator promises 0x20 alignment
+    # NOTE: HostAllocator promises 0x20 alignment
     sargs = ", ".join([f"{ldt(u.dtype, ptr=u.addrspace == AddrSpace.GLOBAL)}{' noalias align 32' if u.addrspace == AddrSpace.GLOBAL else ''} " + \
       name for name,u in args])
     return "\n".join((prefix or []) + [f"define{' ' + self.abi if self.abi else ''} void @{name}({sargs}) #0", "{"] + kernel + ["  ret void\n}"])
