@@ -12,6 +12,8 @@ echo -n "1" > /data/params/d/IsMetric
 echo -n "1" > /data/params/d/ToyotaEnforceStockLongitudinal
 # 强制 UI 语言为简体中文
 echo -n "zh-CHS" > /data/params/d/LanguageSetting
+# 打灯变道默认不需要轻推（AutoLaneChangeTimer: 0=Nudge, 1=Nudgeless）
+echo -n "1" > /data/params/d/AutoLaneChangeTimer
 
 
 
