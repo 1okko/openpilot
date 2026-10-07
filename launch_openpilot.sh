@@ -10,6 +10,8 @@ echo -n "1" > /data/params/d/IsMetric
 echo -n "1" > /data/params/d/ToyotaEnforceStockLongitudinal
 # 强制 UI 语言为简体中文
 echo -n "zh-CHS" > /data/params/d/LanguageSetting
+# 强制车辆指纹为 Toyota Sienna 2021-26 PATCHED
+echo -n '{"platform":"TOYOTA_SIENNA_PATCHED","make":"Toyota","brand":"toyota","model":"Sienna","year":["2021","2022","2023","2024","2025","2026"],"package":"All","name":"Toyota Sienna 2021-26 PATCHED"}' > /data/params/d/CarPlatformBundle
 
 
 
