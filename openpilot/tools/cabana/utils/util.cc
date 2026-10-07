@@ -303,7 +303,6 @@ QValidator::State DoubleValidator::validate(QString &input, int &pos) const {
 }
 
 namespace utils {
-
 std::string homePath() {
   const char *home = ::getenv("HOME");
   return home ? home : "";
