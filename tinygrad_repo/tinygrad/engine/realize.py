@@ -58,7 +58,8 @@ def estimate_uop(call:UOp) -> Estimates:
   return Estimates()
 
 first_run_cache:set[bytes] = set()
-def track_stats(ctx:ExecContext, call:UOp, st:decimal.Decimal, ets:list[float|None]):
+def track_stats(ctx:ExecContext, call:UOp, st:decimal.Decimal, ets:list[float|None]|None):
+  ets = ets or []
   if ctx.update_stats:
     is_hcq = (ast:=call.src[0]).op is Ops.CUSTOM_FUNCTION and ast.arg == "hcq"
     estimates, n = estimate_uop(call), 1 if is_hcq else len(get_call_kernels(call))
