@@ -79,7 +79,8 @@ class CarInterface(CarInterfaceBase):
         ret.flags |= VolkswagenFlags.KOMBI_PRESENT.value
 
       # only allow gateway harness to escalate Emergency Assist
-      ret.dashcamOnly = ret.networkLocation == NetworkLocation.fwdCamera and not docs
+      if ret.flags & VolkswagenFlags.MEB:
+        ret.dashcamOnly = ret.networkLocation == NetworkLocation.fwdCamera and not docs
 
     else:
       # Set global MQB parameters
