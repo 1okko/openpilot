@@ -35,8 +35,8 @@ def create_eps_update(packer, bus, eps_stock_values, ea_simulated_torque):
   return packer.make_can_msg("LH_EPS_03", bus, values)
 
 
-def create_lka_hud_control(packer, bus, ldw_stock_values, lat_active, steering_pressed, hud_alert, hud_control, sound_alert=False):
-  display_mode = 1 if lat_active else 0  # travel assist style showing yellow lanes when op is active
+def create_lka_hud_control(packer, bus, CP, ldw_stock_values, lat_active, steering_pressed, hud_alert, hud_control, sound_alert=False):
+  display_mode = 1 if lat_active and not (CP.flags & VolkswagenFlags.CLUSTER_NO_TA_LANES) else 0  # travel assist style showing yellow lanes when op is active
 
   values = {}
   if len(ldw_stock_values):

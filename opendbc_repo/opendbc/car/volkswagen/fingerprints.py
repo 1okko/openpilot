@@ -8,6 +8,15 @@ Ecu = CarParams.Ecu
 
 
 FW_VERSIONS = {
+  CAR.AUDI_A3_MK4: {
+    (Ecu.engine, 0x7e0, None): [],
+    (Ecu.transmission, 0x7e1, None): [],
+    (Ecu.srs, 0x715, None): [],
+    (Ecu.eps, 0x712, None): [],
+    (Ecu.fwdRadar, 0x757, None): [
+      b'\xf1\x871N3907567E \xf1\x890550',
+    ],
+  },
   CAR.VOLKSWAGEN_GOLF_MK8: {
     (Ecu.engine, 0x7e0, None): [],
     (Ecu.transmission, 0x7e1, None): [],
