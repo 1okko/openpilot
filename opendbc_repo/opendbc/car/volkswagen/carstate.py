@@ -55,7 +55,7 @@ class CarState(CarStateBase):
       return self.update_pq(pt_cp, cam_cp, ext_cp)
     elif self.CP.flags & VolkswagenFlags.MLB:
       return self.update_mlb(pt_cp, cam_cp, ext_cp, alt_cp)
-    elif self.CP.flags & VolkswagenFlags.MEB:
+    elif self.CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
       return self.update_meb(pt_cp, cam_cp, ext_cp)
     else:
       return self.update_mqb(pt_cp, cam_cp, ext_cp)
@@ -153,6 +153,8 @@ class CarState(CarStateBase):
     # vEgo obtained from Bremse_1 vehicle speed rather than Bremse_3 wheel speeds because Bremse_3 isn't present on NSF
     ret.vEgoRaw = pt_cp.vl["Bremse_1"]["BR1_Rad_kmh"] * CV.KPH_TO_MS
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
+    if self.CP.flags & VolkswagenFlags.KOMBI_PRESENT:
+      ret.vEgoCluster = pt_cp.vl["Kombi_01"]["KBI_angez_Geschw"] * CV.KPH_TO_MS
     ret.standstill = ret.vEgoRaw == 0
 
     # Update EPS position and state info. For signed values, VW sends the sign in a separate signal.
@@ -282,7 +284,10 @@ class CarState(CarStateBase):
     ret.espActive = bool(pt_cp.vl["ESP_21"]["ESP_Eingriff"])
 
     self.acc_type = ext_cp.vl["ACC_18"]["ACC_Typ"]
-    self.esp_hold_confirmation = bool(pt_cp.vl["ESC_50"]["Standstill"])
+    if self.CP.flags & VolkswagenFlags.MQB_EVO:
+      self.esp_hold_confirmation = bool(pt_cp.vl["ESP_21"]["ESP_Haltebestaetigung"])
+    else:
+      self.esp_hold_confirmation = bool(pt_cp.vl["ESC_50"]["Standstill"])
     self.travel_assist_available = bool(cam_cp.vl["TA_01"]["Travel_Assist_Available"])
     ret.stockFcw = bool(ext_cp.vl["AWV_03"]["FCW_Active"])
     ret.stockAeb = bool(ext_cp.vl["AWV_03"]["AEB_Active"])
@@ -306,7 +311,7 @@ class CarState(CarStateBase):
                                                                             pt_cp.vl["SMLS_01"]["BH_Blinker_re"])
 
     if self.CP.enableBsm:
-      bsm_cp = pt_cp if self.CP.flags & VolkswagenFlags.MEB_GEN2 else ext_cp
+      bsm_cp = pt_cp if self.CP.flags & (VolkswagenFlags.MEB_GEN2 | VolkswagenFlags.MQB_EVO) else ext_cp
       ret.leftBlindspot = (bool(bsm_cp.vl["MEB_Side_Assist_01"]["Blind_Spot_Info_Driver"]) or
                            bool(bsm_cp.vl["MEB_Side_Assist_01"]["Blind_Spot_Warn_Driver"]))
       ret.rightBlindspot = (bool(bsm_cp.vl["MEB_Side_Assist_01"]["Blind_Spot_Info_Passenger"]) or
@@ -414,7 +419,7 @@ class CarState(CarStateBase):
   def get_can_parsers(CP, CP_SP):
     if CP.flags & VolkswagenFlags.PQ:
       return CarState.get_can_parsers_pq(CP)
-    elif CP.flags & VolkswagenFlags.MEB:
+    elif CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
       return CarState.get_can_parsers_meb(CP)
 
     # manually configure some optional and variable-rate/edge-triggered messages

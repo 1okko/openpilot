@@ -42,9 +42,13 @@ class CarInterface(CarInterfaceBase):
       ret.networkLocation = NetworkLocation.gateway
       ret.dashcamOnly = is_release  # Release support needs HCA timeout fix, safety validation, revised J533 harness
 
-    elif ret.flags & VolkswagenFlags.MEB:
+    elif ret.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
       # Set global MEB parameters
-      safety_configs = [get_safety_config(structs.CarParams.SafetyModel.volkswagenMeb)]
+      if ret.flags & VolkswagenFlags.MEB:
+        safety_configs = [get_safety_config(structs.CarParams.SafetyModel.volkswagenMeb)]
+      elif ret.flags & VolkswagenFlags.MQB_EVO:
+        safety_configs = [get_safety_config(structs.CarParams.SafetyModel.volkswagenMqbEvo)]
+
       if ret.flags & VolkswagenFlags.MEB_GEN2:
         safety_configs[0].safetyParam |= VolkswagenSafetyFlags.MEB_ALT_CRC.value
 
@@ -71,6 +75,8 @@ class CarInterface(CarInterfaceBase):
         ret.flags |= VolkswagenFlags.STOCK_KLR_PRESENT.value
       if 0x3DC in fingerprint[0]:  # Gateway_73
         ret.flags |= VolkswagenFlags.ALT_GEAR.value
+      if ret.flags & VolkswagenFlags.MQB_EVO and 0x30B in fingerprint[0]:  # Kombi_01
+        ret.flags |= VolkswagenFlags.KOMBI_PRESENT.value
 
       # only allow gateway harness to escalate Emergency Assist
       ret.dashcamOnly = ret.networkLocation == NetworkLocation.fwdCamera and not docs
@@ -103,7 +109,7 @@ class CarInterface(CarInterfaceBase):
     if ret.flags & VolkswagenFlags.PQ or ret.flags & VolkswagenFlags.MLB:
       ret.steerActuatorDelay = 0.2
       CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
-    elif ret.flags & VolkswagenFlags.MEB:
+    elif ret.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
       ret.steerActuatorDelay = 0.3
     else:
       ret.steerActuatorDelay = 0.1
@@ -115,7 +121,7 @@ class CarInterface(CarInterfaceBase):
 
     # Global longitudinal tuning defaults, can be overridden per-vehicle
 
-    if ret.flags & VolkswagenFlags.MEB:
+    if ret.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
       ret.openpilotLongitudinalControl = True
       ret.longitudinalActuatorDelay = 0.3
       ret.longitudinalTuning.kiBP = [0., 30.]
