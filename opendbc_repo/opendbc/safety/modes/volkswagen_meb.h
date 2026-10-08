@@ -12,6 +12,8 @@
 #define MSG_Motor_51         0x10BU   // RX for TSK state and accel pedal
 #define MSG_KLR_01           0x25DU   // TX, for capacitive steering wheel
 #define MSG_TA_01            0x26BU   // TX by OP, Travel Assist status
+#define MSG_DIAGNOSTIC       0x700U   // TX, functional tester present for the radar disable
+#define MSG_RADAR_DIAG       0x757U   // TX, physical radar diagnostic address
 
 // ACC_18.ACC_Anforderung_HMS, the states openpilot is allowed to request
 #define VOLKSWAGEN_MEB_HMS_KEINE_ANFORDERUNG   0U
@@ -116,9 +118,27 @@ static safety_config volkswagen_meb_init(uint16_t param) {
     {MSG_TA_01, 0, 8, .check_relay = true},
   };
 
+  // With the radar disabled (camera side of the relay) openpilot needs the diagnostic
+  // addresses to put the radar into a programming session
+  static const CanMsg VOLKSWAGEN_MEB_TX_MSGS_NO_RADAR[] = {
+    {MSG_HCA_03, 0, 24, .check_relay = true},
+    {MSG_LDW_02, 0, 8, .check_relay = true},
+    {MSG_KLR_01, 0, 8, .check_relay = false},
+    {MSG_KLR_01, 2, 8, .check_relay = true},
+    {MSG_ACC_19, 0, 48, .check_relay = true},
+    {MSG_ACC_18, 0, 32, .check_relay = true},
+    {MSG_TA_01, 0, 8, .check_relay = true},
+    {MSG_DIAGNOSTIC, 0, 8, .check_relay = false},
+    {MSG_RADAR_DIAG, 0, 8, .check_relay = false},
+  };
+
   volkswagen_common_init();
   const uint16_t FLAG_VOLKSWAGEN_MEB_ALT_CRC = 2;
   volkswagen_meb_alt_crc = GET_FLAG(param, FLAG_VOLKSWAGEN_MEB_ALT_CRC);
+
+#ifdef ALLOW_DEBUG
+  volkswagen_disable_radar = GET_FLAG(param, FLAG_VOLKSWAGEN_DISABLE_RADAR);
+#endif
 
   safety_config ret;
   if (volkswagen_meb_alt_crc) {
@@ -128,7 +148,8 @@ static safety_config volkswagen_meb_init(uint16_t param) {
       {.msg = {{MSG_ESC_51, 0, 64, 50U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     };
 
-    ret = BUILD_SAFETY_CFG(volkswagen_meb_gen2_rx_checks, VOLKSWAGEN_MEB_TX_MSGS);
+    ret = volkswagen_disable_radar ? BUILD_SAFETY_CFG(volkswagen_meb_gen2_rx_checks, VOLKSWAGEN_MEB_TX_MSGS_NO_RADAR)
+                                   : BUILD_SAFETY_CFG(volkswagen_meb_gen2_rx_checks, VOLKSWAGEN_MEB_TX_MSGS);
   } else {
     static RxCheck volkswagen_meb_rx_checks[] = {
       VOLKSWAGEN_MEB_COMMON_RX_CHECKS
@@ -136,7 +157,8 @@ static safety_config volkswagen_meb_init(uint16_t param) {
       {.msg = {{MSG_ESC_51, 0, 48, 50U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},
     };
 
-    ret = BUILD_SAFETY_CFG(volkswagen_meb_rx_checks, VOLKSWAGEN_MEB_TX_MSGS);
+    ret = volkswagen_disable_radar ? BUILD_SAFETY_CFG(volkswagen_meb_rx_checks, VOLKSWAGEN_MEB_TX_MSGS_NO_RADAR)
+                                   : BUILD_SAFETY_CFG(volkswagen_meb_rx_checks, VOLKSWAGEN_MEB_TX_MSGS);
   }
   return ret;
 }
