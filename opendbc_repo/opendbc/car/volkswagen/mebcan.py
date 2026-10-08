@@ -1,7 +1,7 @@
 from opendbc.car import Bus, structs
 from opendbc.can import CANDefine
 from opendbc.car.common.conversions import Conversions as CV
-from opendbc.car.volkswagen.values import DBC, VolkswagenFlags
+from opendbc.car.volkswagen.values import DBC
 
 LongCtrlState = structs.CarControl.Actuators.LongControlState
 
@@ -35,8 +35,8 @@ def create_eps_update(packer, bus, eps_stock_values, ea_simulated_torque):
   return packer.make_can_msg("LH_EPS_03", bus, values)
 
 
-def create_lka_hud_control(packer, bus, CP, ldw_stock_values, lat_active, steering_pressed, hud_alert, hud_control, sound_alert=False):
-  display_mode = 1 if lat_active and not (CP.flags & VolkswagenFlags.CLUSTER_NO_TA_LANES) else 0  # travel assist style showing yellow lanes when op is active
+def create_lka_hud_control(packer, bus, ldw_stock_values, lat_active, steering_pressed, hud_alert, hud_control, sound_alert=False):
+  display_mode = 1 if lat_active else 0  # travel assist style showing yellow lanes when op is active
 
   values = {}
   if len(ldw_stock_values):
@@ -168,12 +168,12 @@ def create_acc_accel_control(packer, bus, CCP, acc_type, acc_enabled, accel, acc
   commands = []
 
   # ACC_Anhalteweg: when stopping: MEB: values <> 0 the car can execute a hard brake probably if target is too close, MQBEvo: value 0 results in hard brake
-  terminal_rollout = 0.5 if CP.flags & VolkswagenFlags.MQB_EVO else 0
+  terminal_rollout = 0
 
   values = {
     "ACC_Typ":                    acc_type,
     "ACC_Status_ACC":             acc_status,
-    "ACC_StartStopp_Info":        2 if (acc_enabled and leaving_standstill and (CP.flags & VolkswagenFlags.MQB_EVO)) else (1 if acc_enabled else 0),
+    "ACC_StartStopp_Info":        acc_enabled,
     "ACC_Sollbeschleunigung_02":  accel,
     "ACC_zul_Regelabw_unten":     0,
     "ACC_zul_Regelabw_oben":      0,

@@ -117,8 +117,3 @@ legend = ["LAT_ACCEL_FACTOR", "MAX_LAT_ACCEL_MEASURED", "FRICTION"]
 # port extensions
 "HONDA_CLARITY" = [0.96, 0.4018518740819229, 0.19]
 "CHEVROLET_MALIBU_NON_ACC_9TH_GEN" = [1.85, 1.85, 0.075]
-
-"VOLKSWAGEN_GOLF_MK8" = [nan, 2.5, nan]
-"SEAT_LEON_MK4" = [nan, 2.5, nan]
-
-"AUDI_A3_MK4" = [nan, 2.5, nan]

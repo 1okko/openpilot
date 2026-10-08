@@ -8,62 +8,6 @@ Ecu = CarParams.Ecu
 
 
 FW_VERSIONS = {
-  CAR.AUDI_A3_MK4: {
-    (Ecu.engine, 0x7e0, None): [],
-    (Ecu.transmission, 0x7e1, None): [],
-    (Ecu.srs, 0x715, None): [],
-    (Ecu.eps, 0x712, None): [],
-    (Ecu.fwdRadar, 0x757, None): [
-      b'\xf1\x871N3907567E \xf1\x890550',
-    ],
-  },
-  CAR.VOLKSWAGEN_GOLF_MK8: {
-    (Ecu.engine, 0x7e0, None): [],
-    (Ecu.transmission, 0x7e1, None): [],
-    (Ecu.srs, 0x715, None): [],
-    (Ecu.eps, 0x712, None): [],
-    (Ecu.cornerRadar, 0x74e, None): [
-      b'\xf1\x872Q0907686J \xf1\x890288',
-    ],
-    (Ecu.adas, 0x769, None): [
-      b'\xf1\x875WA980556C \xf1\x890314',
-      b'\xf1\x875WA980556D \xf1\x890364',
-    ],
-    (Ecu.parkingAdas, 0x70a, None): [],
-    (Ecu.fwdRadar, 0x757, None): [
-      b'\xf1\x875WA907572B \xf1\x890395',
-      b'\xf1\x875WA907572C \xf1\x890461',
-    ],
-    (Ecu.fwdCamera, 0x74f, None): [
-      b'\xf1\x875WA980653C \xf1\x893301',
-      b'\xf1\x875WA980653D \xf1\x893405',
-    ],
-  },
-  CAR.SEAT_LEON_MK4: {
-    (Ecu.engine, 0x7e0, None): [],
-    (Ecu.transmission, 0x7e1, None): [
-      b'\xf1\x870CW906556JA\xf1\x890780',
-    ],
-    (Ecu.srs, 0x715, None): [
-      b'\xf1\x871EA959655CK\xf1\x890166',
-    ],
-    (Ecu.eps, 0x712, None): [],
-    (Ecu.cornerRadar, 0x74e, None): [
-      b'\xf1\x872Q0907686E \xf1\x890284',
-    ],
-    (Ecu.adas, 0x769, None): [
-      b'\xf1\x875WA980556D \xf1\x890344',
-    ],
-    (Ecu.parkingAdas, 0x70a, None): [
-      b'\xf1\x875WA919298A \xf1\x890230',
-    ],
-    (Ecu.fwdRadar, 0x757, None): [
-      b'\xf1\x875WA907572B \xf1\x890395',
-    ],
-    (Ecu.fwdCamera, 0x74f, None): [
-      b'\xf1\x875WA980653A \xf1\x893129',
-    ],
-  },
   CAR.VOLKSWAGEN_ARTEON_MK1: {
     (Ecu.engine, 0x7e0, None): [
       b'\xf1\x8704L906026TM\xf1\x896847',

@@ -16,8 +16,6 @@ TransmissionType = structs.CarParams.TransmissionType
 GearShifter = structs.CarState.GearShifter
 Button = namedtuple('Button', ['event_type', 'can_addr', 'can_msg', 'values'])
 
-RADAR_DISABLE_STATE: dict[str, bool] = {"error": False}
-
 
 class CanBus(CanBusBase):
   def __init__(self, CP=None, fingerprint=None) -> None:
@@ -102,7 +100,7 @@ class CarControllerParams:
         "laneAssistDeactivTrailer": 5,  # "Lane Assist: no function with trailer"
       }
 
-    elif CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
+    elif CP.flags & VolkswagenFlags.MEB:
       self.LDW_STEP = 10                  # LDW_02 message frequency 10Hz
       self.ACC_HUD_STEP = 6
       self.KLR_01_STEP = 6                # KLR_01 message frequency 17Hz
@@ -217,7 +215,6 @@ class WMI(StrEnum):
 class VolkswagenSafetyFlags(IntFlag):
   LONG_CONTROL = 1
   MEB_ALT_CRC = 2
-  DISABLE_RADAR = 8
 
 
 class VolkswagenFlags(IntFlag):
@@ -232,10 +229,6 @@ class VolkswagenFlags(IntFlag):
   MLB = 8
   MEB = 16
   MEB_GEN2 = 128
-  MQB_EVO = 256
-  MQB_EVO_GEN2 = 8192
-  DISABLE_RADAR = 2 ** 12
-  CLUSTER_NO_TA_LANES = 65536
 
 
 @dataclass
@@ -267,19 +260,6 @@ class VolkswagenMEBPlatformConfig(PlatformConfig):
     self.flags |= VolkswagenFlags.MEB
     if self.flags & VolkswagenFlags.MEB_GEN2:
       self.dbc_dict = {Bus.pt: 'vw_meb_2024_generated', Bus.radar: 'vw_meb_2024_generated'}
-
-
-
-@dataclass
-class VolkswagenMQBevoPlatformConfig(PlatformConfig):
-  dbc_dict: DbcDict = field(default_factory=lambda: {Bus.pt: 'vw_mqbevo', Bus.radar: 'vw_mqbevo'})
-  chassis_codes: set[str] = field(default_factory=set)
-  wmis: set[WMI] = field(default_factory=set)
-
-  def init(self):
-    self.flags |= VolkswagenFlags.MQB_EVO
-    if self.flags & VolkswagenFlags.MQB_EVO_GEN2:
-      self.dbc_dict = {Bus.pt: 'vw_mqbevo_2024', Bus.radar: 'vw_mqbevo_2024'}
 
 
 @dataclass
@@ -404,12 +384,6 @@ class CAR(Platforms):
     chassis_codes={"5G", "AU", "BA", "BE"},
     wmis={WMI.VOLKSWAGEN_MEXICO_CAR, WMI.VOLKSWAGEN_EUROPE_CAR},
   )
-  VOLKSWAGEN_GOLF_MK8 = VolkswagenMQBevoPlatformConfig(
-    [VWCarDocs("Volkswagen Golf 2020-25")],
-    VolkswagenCarSpecs(mass=1397, wheelbase=2.62),
-    chassis_codes={"CD"},
-    wmis={WMI.VOLKSWAGEN_EUROPE_CAR},
-  )
   VOLKSWAGEN_ID4_MK1 = VolkswagenMEBPlatformConfig(
     [
       VWCarDocs("Volkswagen ID.4 2021-23"),
@@ -527,13 +501,6 @@ class CAR(Platforms):
     chassis_codes={"8V", "FF"},
     wmis={WMI.AUDI_GERMANY_CAR, WMI.AUDI_SPORT, WMI.VOLKSWAGEN_CHINA_FAW},
   )
-  AUDI_A3_MK4 = VolkswagenMQBevoPlatformConfig(
-    [VWCarDocs("Audi RS3 2026")],
-    VolkswagenCarSpecs(mass=1650, wheelbase=2.631),
-    chassis_codes={"GY"},
-    wmis={WMI.AUDI_EUROPE_MPV},
-    flags=VolkswagenFlags.MQB_EVO_GEN2 | VolkswagenFlags.CLUSTER_NO_TA_LANES,
-  )
   AUDI_Q2_MK1 = VolkswagenMQBPlatformConfig(
     [VWCarDocs("Audi Q2 2018")],
     VolkswagenCarSpecs(mass=1205, wheelbase=2.61),
@@ -566,14 +533,6 @@ class CAR(Platforms):
     ],
     VolkswagenCarSpecs(mass=1300, wheelbase=2.64),
     chassis_codes={"5F"},
-    wmis={WMI.SEAT},
-  )
-  SEAT_LEON_MK4 = VolkswagenMQBevoPlatformConfig(
-    [
-      VWCarDocs("SEAT Leon 2020-25"),
-    ],
-    VolkswagenCarSpecs(mass=1300, wheelbase=2.685),
-    chassis_codes={"KL"},
     wmis={WMI.SEAT},
   )
   CUPRA_BORN_MK1 = VolkswagenMEBPlatformConfig(

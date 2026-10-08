@@ -4,13 +4,6 @@ from opendbc.car.interfaces import RadarInterfaceBase
 from opendbc.car.volkswagen.values import DBC, VolkswagenFlags, CanBus
 
 NO_OBJECT_ID = 0
-DISTANCE_STATUS_VALID = 0
-RADAR_UNAVAILABLE_THRESH = 5
-# radar object drel is not the end of the radar facing side but probably the longitudinal
-# center of the object; the DBC drel offset of -3.6 m is measured for a point mass (person)
-# type object, so statically subtract something between the first half and the end of a
-# typical car length.
-DREL_FRONT_EDGE_MARGIN = 1.5  # in m
 LANE_TYPES = ("Same_Lane", "Left_Lane", "Right_Lane")
 SIGNAL_SETS = tuple(
   (
@@ -25,51 +18,24 @@ SIGNAL_SETS = tuple(
 )
 
 
-# The gateway harness does not expose the raw radar points, but the camera publishes filtered
-# tracks: two per lane, for the left, center and right lanes. MEB calls that message
-# MEB_Distance_01, while the MQB EVO DBC carries the exact same payload as Strukturen_01.
-RADAR_TRACK_MESSAGE = (
-  (VolkswagenFlags.MEB, "MEB_Distance_01"),
-  (VolkswagenFlags.MQB_EVO, "Strukturen_01"),
-)
-
-
-def get_radar_message(CP):
-  if not (CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO)):
-    return None
-
-  if CP.flags & VolkswagenFlags.MQB_EVO_GEN2:  # generation specific, no track message on the bus
-    return None
-
-  for flag, message in RADAR_TRACK_MESSAGE:
-    if CP.flags & flag:
-      return message
-
-  return None
-
-
 class RadarInterface(RadarInterfaceBase):
   def __init__(self, CP, CP_SP):
     super().__init__(CP, CP_SP)
 
-    self.radar_off_can: bool = CP.radarUnavailable
-    self.radar_unavailable_cnt: int = 0
+    # With the MEB gateway harness, we do not have access to the raw points from the radar.
+    # However, the camera publishes decent, albeit filtered, tracks. Two for each lane; left, center, and right.
     self.rcp: CANParser | None = None
-    self.radar_message: str | None = get_radar_message(CP)
-
-    if self.radar_message is not None:
-      self.rcp = CANParser(DBC[CP.carFingerprint][Bus.radar], [(self.radar_message, 25)], CanBus(CP).cam)
+    if CP.flags & VolkswagenFlags.MEB and not self.CP.radarUnavailable:
+      self.rcp = CANParser(DBC[CP.carFingerprint][Bus.radar], [("MEB_Distance_01", 25)], CanBus(CP).cam)
 
   def update(self, can_strings):
-    if self.radar_off_can or self.rcp is None:
+    if self.rcp is None:
       return super().update(None)
 
     self.rcp.update(can_strings)
 
-    if len(self.rcp.vl_all[self.radar_message]["Distance_Status"]) == 0:
-      # The track message hasn't been seen yet. Keep publishing empty radar data instead of
-      # nothing, so consumers waiting on radarTracks don't stall.
-      return super().update(None)
+    if len(self.rcp.vl_all["MEB_Distance_01"]["Distance_Status"]) == 0:
+      return None
 
     return self._update()
 
@@ -80,19 +46,11 @@ class RadarInterface(RadarInterfaceBase):
       ret.errors.canError = True
       return ret
 
-    msg = self.rcp.vl[self.radar_message]
+    msg = self.rcp.vl["MEB_Distance_01"]
 
-    # Radar reports its overall validity via Distance_Status (0 = Valid, 3 = Invalid).
-    # Treat consecutive invalid reports as a temporary radar unavailability, similar to Ford MRR.
-    if msg["Distance_Status"] != DISTANCE_STATUS_VALID:
-      self.radar_unavailable_cnt += 1
-    else:
-      self.radar_unavailable_cnt = 0
-
-    if self.radar_unavailable_cnt >= RADAR_UNAVAILABLE_THRESH:
-      self.pts.clear()
+    # Can be 3 when radar sensor is obstructed
+    if msg["Distance_Status"] != 0:
       ret.errors.radarUnavailableTemporary = True
-      return ret
 
     seen_ids = set()
     for obj_id_sig, long_sig, lat_sig, vel_sig in SIGNAL_SETS:
@@ -102,7 +60,7 @@ class RadarInterface(RadarInterfaceBase):
 
       # We shouldn't see duplicate track ids
       if obj_id in seen_ids:
-        ret.errors.canError = True
+        ret.errors.radarFault = True
         return ret
 
       seen_ids.add(obj_id)
@@ -115,7 +73,7 @@ class RadarInterface(RadarInterfaceBase):
       else:
         pt = self.pts[obj_id]
 
-      pt.dRel = msg[long_sig] - DREL_FRONT_EDGE_MARGIN
+      pt.dRel = msg[long_sig]
       pt.yRel = msg[lat_sig]
       pt.vRel = msg[vel_sig]
 

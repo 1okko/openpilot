@@ -44,7 +44,7 @@ class CarController(CarControllerBase):
     self.aeb_available = not CP.flags & VolkswagenFlags.PQ
     self.dp_avoid_eps_lockout = bool(self.CP_SP.flags & VolkswagenFlagsSP.AVOID_EPS_LOCKOUT)
 
-    if CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
+    if CP.flags & VolkswagenFlags.MEB:
       self.meb_long_state = mebcan.MebLongStateMachine(self.CP, self.CCP)
 
     if CP.flags & VolkswagenFlags.PQ:
@@ -72,7 +72,7 @@ class CarController(CarControllerBase):
 
     if self.frame % self.CCP.STEER_STEP == 0:
       apply_torque = 0
-      if self.CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
+      if self.CP.flags & VolkswagenFlags.MEB:
         # Logic to avoid HCA refused state:
         #   * steering power as counter and near zero before OP lane assist deactivation
         # MEB rack can be used continuously without time limits
@@ -135,7 +135,7 @@ class CarController(CarControllerBase):
         can_sends.append(self.CCS.create_eps_update(self.packer_pt, self.CAN.cam, CS.eps_stock_values, ea_simulated_torque))
 
     # Emergency Assist intervention
-    if self.CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO) and self.CP.flags & VolkswagenFlags.STOCK_KLR_PRESENT:
+    if self.CP.flags & VolkswagenFlags.MEB and self.CP.flags & VolkswagenFlags.STOCK_KLR_PRESENT:
       # send capacitive steering wheel hands-on message to keep ACC resume active and control Emergency Assist
       # MEB Emergency Assist brake jerks after 30s of continued hands-off time.
       # We send the stock wheeltouch message to start the stock DM timer when openpilot latches the critical driver monitoring alert
@@ -148,7 +148,7 @@ class CarController(CarControllerBase):
 
     if self.CP.openpilotLongitudinalControl:
       if self.frame % self.CCP.ACC_CONTROL_STEP == 0:
-        if self.CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
+        if self.CP.flags & VolkswagenFlags.MEB:
           accel = float(np.clip(actuators.accel, self.CCP.ACCEL_MIN, self.CCP.ACCEL_MAX))
           accel, acc_status, acc_hold_type, braking_to_stop, leaving_standstill = self.meb_long_state.update(CS, CC, accel)
           can_sends.extend(mebcan.create_acc_accel_control(self.packer_pt, self.CAN.pt, self.CCP, CS.acc_type, CC.enabled,
@@ -177,18 +177,14 @@ class CarController(CarControllerBase):
       hud_alert = 0
       if hud_control.visualAlert in (VisualAlert.steerRequired, VisualAlert.ldw):
         hud_alert = self.CCP.LDW_MESSAGES["laneAssistTakeOver"]
-      if self.CP.flags & VolkswagenFlags.MQB_EVO_GEN2:
-        can_sends.append(mebcan.create_lka_hud_control(self.packer_pt, self.CAN.pt, self.CP, CS.ldw_stock_values,
-                                                       CC.latActive, CS.out.steeringPressed, hud_alert, hud_control))
-      else:
-        can_sends.append(self.CCS.create_lka_hud_control(self.packer_pt, self.CAN.pt, CS.ldw_stock_values, CC.latActive,
-                                                         CS.out.steeringPressed, hud_alert, hud_control))
+      can_sends.append(self.CCS.create_lka_hud_control(self.packer_pt, self.CAN.pt, CS.ldw_stock_values, CC.latActive,
+                                                       CS.out.steeringPressed, hud_alert, hud_control))
 
     if hud_control.leadDistanceBars != self.lead_distance_bars_last:
       self.distance_bar_frame = self.frame
 
     if self.frame % self.CCP.ACC_HUD_STEP == 0 and self.CP.openpilotLongitudinalControl:
-      if self.CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO):
+      if self.CP.flags & VolkswagenFlags.MEB:
         fcw_alert = hud_control.visualAlert == VisualAlert.fcw
         show_distance_bars = self.frame - self.distance_bar_frame < 400
         lead_distance = 0
