@@ -141,9 +141,17 @@ class ModelFetcher:
   MODEL_URL = "https://raw.githubusercontent.com/sunnypilot/sunnypilot-models/refs/heads/gh-pages/docs/driving_models_v21.json"
   MODEL_URL_CHESTNUT = "https://raw.githubusercontent.com/sunnypilot/sunnypilot-models/refs/heads/gh-pages/docs/driving_models_chestnut_v22.json"
 
+  # raw.githubusercontent.com is often unreachable from mainland China, so keep mirrors as fallback
+  MODEL_URL_MIRRORS = (
+    "https://gh-proxy.com/https://raw.githubusercontent.com/sunnypilot/sunnypilot-models/refs/heads/gh-pages/docs/driving_models_v21.json",
+  )
+  MODEL_URL_CHESTNUT_MIRRORS = (
+    "https://gh-proxy.com/https://raw.githubusercontent.com/sunnypilot/sunnypilot-models/refs/heads/gh-pages/docs/driving_models_chestnut_v22.json",
+  )
+
   MODEL_SOURCES = {
-    "qcom": (MODEL_URL, ""),
-    "chestnut": (MODEL_URL_CHESTNUT, "_Chestnut"),
+    "qcom": ((MODEL_URL, *MODEL_URL_MIRRORS), ""),
+    "chestnut": ((MODEL_URL_CHESTNUT, *MODEL_URL_CHESTNUT_MIRRORS), "_Chestnut"),
   }
 
   def __init__(self, params: Params):
@@ -167,34 +175,43 @@ class ModelFetcher:
     """Fetches fresh model data from remote and updates cache.
     Returns None on transport errors. Raises on 404 and other fatal HTTP errors.
     """
-    model_url, _ = self.MODEL_SOURCES[source]
-    try:
-      response = requests.get(model_url, timeout=10)
+    model_urls, _ = self.MODEL_SOURCES[source]
+    last_error: Exception | None = None
 
-      # Explicitly handle 404 differently
-      if response.status_code == 404:
-        cloudlog.error(f"Models URL returned 404 Not Found: {model_url}")
-        raise HTTPError(f"404 Not Found: {model_url}", response=response)
+    for model_url in model_urls:
+      try:
+        response = requests.get(model_url, timeout=10)
 
-      # Raise for any other 4xx/5xx
-      response.raise_for_status()
+        # Explicitly handle 404 differently
+        if response.status_code == 404:
+          cloudlog.error(f"Models URL returned 404 Not Found: {model_url}")
+          raise HTTPError(f"404 Not Found: {model_url}", response=response)
 
-      json_data = response.json()
-      parsed = self.model_parser.parse_models(json_data)
-      if parsed:
-        self.model_caches[source].set(json_data)
-        cloudlog.debug(f"Successfully updated models cache for {source}")
-      return parsed
+        # Raise for any other 4xx/5xx
+        response.raise_for_status()
 
-    except ConnectionError as e:
-      cloudlog.warning(f"DNS/connection error while fetching models: {e}")
-    except SSLError as e:
-      cloudlog.warning(f"SSL error while fetching models: {e}")
-    except RequestException as e:
-      cloudlog.warning(f"Request transport error while fetching models: {e}")
-    except Exception as e:
-      cloudlog.exception(f"Unexpected error fetching models: {e}")
+        json_data = response.json()
+        parsed = self.model_parser.parse_models(json_data)
+        if parsed:
+          self.model_caches[source].set(json_data)
+          cloudlog.debug(f"Successfully updated models cache for {source} from {model_url}")
+        return parsed
 
+      except ConnectionError as e:
+        last_error = e
+        cloudlog.warning(f"DNS/connection error while fetching models from {model_url}: {e}")
+      except SSLError as e:
+        last_error = e
+        cloudlog.warning(f"SSL error while fetching models from {model_url}: {e}")
+      except RequestException as e:
+        last_error = e
+        cloudlog.warning(f"Request transport error while fetching models from {model_url}: {e}")
+      except Exception as e:
+        last_error = e
+        cloudlog.exception(f"Unexpected error fetching models from {model_url}: {e}")
+
+    if last_error is not None:
+      cloudlog.error(f"All model URLs failed for {source}, last error: {last_error}")
     return None
 
   @staticmethod
