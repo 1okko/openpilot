@@ -16,6 +16,8 @@ TransmissionType = structs.CarParams.TransmissionType
 GearShifter = structs.CarState.GearShifter
 Button = namedtuple('Button', ['event_type', 'can_addr', 'can_msg', 'values'])
 
+RADAR_DISABLE_STATE: dict[str, bool] = {"error": False}
+
 
 class CanBus(CanBusBase):
   def __init__(self, CP=None, fingerprint=None) -> None:
@@ -215,6 +217,7 @@ class WMI(StrEnum):
 class VolkswagenSafetyFlags(IntFlag):
   LONG_CONTROL = 1
   MEB_ALT_CRC = 2
+  DISABLE_RADAR = 8
 
 
 class VolkswagenFlags(IntFlag):
@@ -231,6 +234,7 @@ class VolkswagenFlags(IntFlag):
   MEB_GEN2 = 128
   MQB_EVO = 256
   MQB_EVO_GEN2 = 8192
+  DISABLE_RADAR = 2 ** 12
   CLUSTER_NO_TA_LANES = 65536
 
 
