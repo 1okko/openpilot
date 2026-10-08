@@ -13,6 +13,7 @@ C3 Client — 部署到 C3 设备上
 
 import asyncio
 import base64
+import hashlib
 import json
 import os
 import random
@@ -320,16 +321,53 @@ def get_lan_ip():
     return ""
 
 
+def _git_cwd():
+  return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 def get_git_branch():
   try:
     result = subprocess.run(
       ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-      capture_output=True, text=True, timeout=5,
-      cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+      capture_output=True, text=True, timeout=5, cwd=_git_cwd()
     )
     return result.stdout.strip() if result.returncode == 0 else ""
   except Exception:
     return ""
+
+def get_software_version():
+  """Return git describe/hash and the latest commit date for the UI."""
+  cwd = _git_cwd()
+  version = ""
+  commit_date = ""
+  try:
+    result = subprocess.run(
+      ["git", "describe", "--tags", "--always", "--dirty"],
+      capture_output=True, text=True, timeout=5, cwd=cwd
+    )
+    if result.returncode == 0:
+      version = result.stdout.strip()[:64]
+  except Exception:
+    pass
+  try:
+    result = subprocess.run(
+      ["git", "log", "-1", "--format=%cs"],
+      capture_output=True, text=True, timeout=5, cwd=cwd
+    )
+    if result.returncode == 0:
+      commit_date = result.stdout.strip()[:16]
+  except Exception:
+    pass
+  if not version:
+    try:
+      result = subprocess.run(
+        ["git", "rev-parse", "--short", "HEAD"],
+        capture_output=True, text=True, timeout=5, cwd=cwd
+      )
+      if result.returncode == 0:
+        version = result.stdout.strip()[:64]
+    except Exception:
+      pass
+  return version, commit_date
 
 def get_car_platform():
   try:
@@ -681,6 +719,133 @@ async def execute_snapshot():
   
   return {"status": "error", "output": "设备不支持截图"}
 
+# ================= Rlog 下载 =================
+RLOG_ROOTS = [
+  "/data/media/0/realdata",
+]
+RLOG_CHUNK_SIZE = 512 * 1024
+RLOG_MAX_SIZE = 2 * 1024 * 1024 * 1024
+
+
+def _rlog_root():
+  for root in RLOG_ROOTS:
+    if os.path.isdir(root):
+      return os.path.realpath(root)
+  return ""
+
+
+def _resolve_rlog_path(rel_path):
+  root = _rlog_root()
+  if not root or not rel_path:
+    raise ValueError("rlog 目录不存在或路径为空")
+  if os.path.isabs(rel_path) or ".." in rel_path.split("/"):
+    raise ValueError("非法 rlog 路径")
+  full_path = os.path.realpath(os.path.join(root, rel_path))
+  if os.path.commonpath([root, full_path]) != root:
+    raise ValueError("rlog 路径越界")
+  if not os.path.isfile(full_path):
+    raise ValueError("rlog 文件不存在")
+  filename = os.path.basename(full_path).lower()
+  if not (filename.startswith("rlog") or filename.startswith("qlog")):
+    raise ValueError("只允许下载 rlog 或 qlog 文件")
+  size = os.path.getsize(full_path)
+  if size > RLOG_MAX_SIZE:
+    raise ValueError("rlog 文件超过 2GB 限制")
+  return root, full_path
+
+
+async def execute_rlog_list(content):
+  root = _rlog_root()
+  if not root:
+    return {"status": "error", "output": "设备不存在 /data/media/0/realdata 目录"}
+  files = []
+  try:
+    for dirpath, dirnames, filenames in os.walk(root):
+      dirnames.sort()
+      for filename in filenames:
+        lower = filename.lower()
+        if not (lower.startswith("rlog") or lower.startswith("qlog")):
+          continue
+        full_path = os.path.realpath(os.path.join(dirpath, filename))
+        if os.path.commonpath([root, full_path]) != root or not os.path.isfile(full_path):
+          continue
+        rel_path = os.path.relpath(full_path, root)
+        route = os.path.relpath(dirpath, root)
+        if route == ".":
+          route = "根目录"
+        stat = os.stat(full_path)
+        if stat.st_size <= 0:
+          continue
+        files.append({
+          "path": rel_path,
+          "route": route,
+          "name": filename,
+          "size": stat.st_size,
+          "mtime": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+        })
+      if len(files) >= 2000:
+        break
+    files.sort(key=lambda item: item["mtime"], reverse=True)
+    return {"status": "ok", "output": json.dumps({"root": root, "files": files}, ensure_ascii=False)}
+  except Exception as e:
+    return {"status": "error", "output": "读取 rlog 列表失败: %s" % e}
+
+
+async def execute_rlog_download(content, ws):
+  download_id = (content or {}).get("download_id", "")
+  rel_path = (content or {}).get("path", "")
+  try:
+    if not download_id:
+      raise ValueError("缺少 download_id")
+    root, full_path = _resolve_rlog_path(rel_path)
+    filename = os.path.basename(full_path)
+    stat = os.stat(full_path)
+    await ws.send(json.dumps({
+      "type": "file_start",
+      "download_id": download_id,
+      "path": rel_path,
+      "filename": filename,
+      "size": stat.st_size,
+    }, ensure_ascii=False))
+    digest = hashlib.sha256()
+    offset = 0
+    seq = 0
+    with open(full_path, "rb") as f:
+      while True:
+        chunk = f.read(RLOG_CHUNK_SIZE)
+        if not chunk:
+          break
+        digest.update(chunk)
+        await ws.send(json.dumps({
+          "type": "file_chunk",
+          "download_id": download_id,
+          "seq": seq,
+          "offset": offset,
+          "data": base64.b64encode(chunk).decode("ascii"),
+        }))
+        offset += len(chunk)
+        seq += 1
+    await ws.send(json.dumps({
+      "type": "file_end",
+      "download_id": download_id,
+      "size": offset,
+      "sha256": digest.hexdigest(),
+    }, ensure_ascii=False))
+    return {"status": "ok", "output": json.dumps({
+      "download_id": download_id,
+      "path": rel_path,
+      "filename": filename,
+      "size": offset,
+      "sha256": digest.hexdigest(),
+    }, ensure_ascii=False)}
+  except Exception as e:
+    try:
+      await ws.send(json.dumps({"type": "file_error", "download_id": download_id, "error": str(e)}, ensure_ascii=False))
+    except Exception:
+      pass
+    return {"status": "error", "output": "rlog 下载失败: %s" % e}
+
+
 # ================= 消息处理 =================
 async def handle_message(data, ws):
   msg_type = data.get("type")
@@ -700,6 +865,10 @@ async def handle_message(data, ws):
     result = await execute_messaging()
   elif msg_type == "snapshot":
     result = await execute_snapshot()
+  elif msg_type == "rlog_list":
+    result = await execute_rlog_list(content)
+  elif msg_type == "rlog_download":
+    result = await execute_rlog_download(content, ws)
 
   else:
     result = {"status": "error", "output": f"未知指令类型: {msg_type}"}
@@ -721,11 +890,12 @@ async def run():
   serial = get_serial()
   dongle_id = get_dongle_id()
   git_branch = get_git_branch()
+  software_version, software_date = get_software_version()
   car_platform = get_car_platform()
   device_type = get_device_type()
   lan_ip = get_lan_ip()
 
-  print(f"[C3 Director Client] 启动 serial={serial} branch={git_branch} platform={car_platform} lan_ip={lan_ip}")
+  print(f"[C3 Director Client] 启动 serial={serial} branch={git_branch} version={software_version} date={software_date} platform={car_platform} lan_ip={lan_ip}")
 
   while True:
     try:
@@ -741,9 +911,12 @@ async def run():
           "serial": serial,
           "dongle_id": dongle_id,
           "git_branch": git_branch,
+          "software_version": software_version,
+          "software_date": software_date,
           "car_platform": car_platform,
           "device_type": device_type,
-          "lan_ip": lan_ip
+          "lan_ip": lan_ip,
+          "capabilities": ["rlog_v1"]
         })
         await ws.send(register_msg)
         print(f"[C3] 已注册: {serial} branch={git_branch} type={device_type}")
