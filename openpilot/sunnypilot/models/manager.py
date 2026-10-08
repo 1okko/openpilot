@@ -24,6 +24,10 @@ from openpilot.sunnypilot.models.helpers import (ACTIVE_BUNDLE_KEYS, get_active_
 DOWNLOAD_TIMEOUT = (30, 30)
 
 
+def _mirror_url(url: str) -> str:
+  return url.replace("huggingface.co", "hf-mirror.com") if "huggingface.co" in url else url
+
+
 class DownloadCancelled(Exception):
   pass
 
@@ -81,11 +85,28 @@ class ModelManagerSP:
 
     return max(1, int(eta))  # Return at least 1 second if download is ongoing
 
+  def _get(self, url: str, session=None, stream: bool = True):
+    """GET with automatic fallback to the hf-mirror.com mirror."""
+    urls = [url]
+    mirror = _mirror_url(url)
+    if mirror != url:
+      urls.append(mirror)
+    last_err = None
+    for u in urls:
+      try:
+        if session is not None:
+          return session.get(u, stream=stream, timeout=DOWNLOAD_TIMEOUT)
+        return requests.get(u, stream=stream, timeout=DOWNLOAD_TIMEOUT)
+      except Exception as e:
+        last_err = e
+        cloudlog.warning(f"model download failed ({u}): {e}; trying next source")
+    raise last_err
+
   async def _download_file(self, url: str, path: str, model) -> None:
     """Downloads a file with progress tracking"""
     self._download_start_times[model.fileName] = time.monotonic()
 
-    with requests.get(url, stream=True, timeout=DOWNLOAD_TIMEOUT) as response:  # noqa: ASYNC210
+    with self._get(url, stream=True) as response:  # noqa: ASYNC210
       response.raise_for_status()
       total_size = int(response.headers.get("content-length", 0))
       bytes_downloaded = 0
@@ -129,7 +150,7 @@ class ModelManagerSP:
         chunk_url = get_chunk_name(base_url, i, num_chunks)
         chunk_path = get_chunk_name(base_path, i, num_chunks)
         chunk_downloaded = 0
-        with session.get(chunk_url, stream=True, timeout=DOWNLOAD_TIMEOUT) as response:
+        with self._get(chunk_url, session=session, stream=True) as response:
           response.raise_for_status()
           chunk_size = int(response.headers.get("content-length", 0))
           with open(chunk_path, 'wb') as f:  # noqa: ASYNC230
