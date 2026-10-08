@@ -27,23 +27,33 @@ RADAR_TRACK_MESSAGE = (
 )
 
 
+def get_radar_message(CP):
+  if not (CP.flags & (VolkswagenFlags.MEB | VolkswagenFlags.MQB_EVO)):
+    return None
+
+  if CP.flags & VolkswagenFlags.MQB_EVO_GEN2:  # generation specific, no track message on the bus
+    return None
+
+  for flag, message in RADAR_TRACK_MESSAGE:
+    if CP.flags & flag:
+      return message
+
+  return None
+
+
 class RadarInterface(RadarInterfaceBase):
   def __init__(self, CP, CP_SP):
     super().__init__(CP, CP_SP)
 
+    self.radar_off_can: bool = CP.radarUnavailable
     self.rcp: CANParser | None = None
-    self.radar_message: str | None = None
-    if not self.CP.radarUnavailable:
-      for flag, message in RADAR_TRACK_MESSAGE:
-        if CP.flags & flag:
-          self.radar_message = message
-          break
+    self.radar_message: str | None = get_radar_message(CP)
 
     if self.radar_message is not None:
       self.rcp = CANParser(DBC[CP.carFingerprint][Bus.radar], [(self.radar_message, 25)], CanBus(CP).cam)
 
   def update(self, can_strings):
-    if self.rcp is None:
+    if self.radar_off_can or self.rcp is None:
       return super().update(None)
 
     self.rcp.update(can_strings)
