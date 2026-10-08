@@ -49,7 +49,8 @@ class CarInterface(CarInterfaceBase):
       elif ret.flags & VolkswagenFlags.MQB_EVO:
         safety_configs = [get_safety_config(structs.CarParams.SafetyModel.volkswagenMqbEvo)]
 
-      if ret.flags & VolkswagenFlags.MEB_GEN2:
+      if ret.flags & (VolkswagenFlags.MEB_GEN2 | VolkswagenFlags.MQB_EVO_GEN2):
+        # Gen2 uses the alt CRC lengths for QFK_01/ESC_51/Motor_51
         safety_configs[0].safetyParam |= VolkswagenSafetyFlags.MEB_ALT_CRC.value
 
       ret.transmissionType = TransmissionType.direct
@@ -65,6 +66,9 @@ class CarInterface(CarInterfaceBase):
 
       if any(msg in fingerprint[1] for msg in (0x520, 0x86, 0xFD, 0x13D)):  # Airbag_02, LWI_01, ESP_21, QFK_01
         ret.networkLocation = NetworkLocation.gateway
+        # The filtered radar tracks are published as Strukturen_01 (0x24F); not every car
+        # emits it, so only claim radar is available when it's actually on the bus.
+        ret.radarUnavailable = 0x24F not in fingerprint[0]
       else:
         ret.networkLocation = NetworkLocation.fwdCamera
         ret.radarUnavailable = True
