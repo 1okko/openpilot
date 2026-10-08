@@ -4,6 +4,13 @@ from opendbc.car.interfaces import RadarInterfaceBase
 from opendbc.car.volkswagen.values import DBC, VolkswagenFlags, CanBus
 
 NO_OBJECT_ID = 0
+DISTANCE_STATUS_VALID = 0
+RADAR_UNAVAILABLE_THRESH = 5
+# radar object drel is not the end of the radar facing side but probably the longitudinal
+# center of the object; the DBC drel offset of -3.6 m is measured for a point mass (person)
+# type object, so statically subtract something between the first half and the end of a
+# typical car length.
+DREL_FRONT_EDGE_MARGIN = 1.5  # in m
 LANE_TYPES = ("Same_Lane", "Left_Lane", "Right_Lane")
 SIGNAL_SETS = tuple(
   (
@@ -46,6 +53,7 @@ class RadarInterface(RadarInterfaceBase):
     super().__init__(CP, CP_SP)
 
     self.radar_off_can: bool = CP.radarUnavailable
+    self.radar_unavailable_cnt: int = 0
     self.rcp: CANParser | None = None
     self.radar_message: str | None = get_radar_message(CP)
 
@@ -74,9 +82,17 @@ class RadarInterface(RadarInterfaceBase):
 
     msg = self.rcp.vl[self.radar_message]
 
-    # Can be 3 when radar sensor is obstructed
-    if msg["Distance_Status"] != 0:
+    # Radar reports its overall validity via Distance_Status (0 = Valid, 3 = Invalid).
+    # Treat consecutive invalid reports as a temporary radar unavailability, similar to Ford MRR.
+    if msg["Distance_Status"] != DISTANCE_STATUS_VALID:
+      self.radar_unavailable_cnt += 1
+    else:
+      self.radar_unavailable_cnt = 0
+
+    if self.radar_unavailable_cnt >= RADAR_UNAVAILABLE_THRESH:
+      self.pts.clear()
       ret.errors.radarUnavailableTemporary = True
+      return ret
 
     seen_ids = set()
     for obj_id_sig, long_sig, lat_sig, vel_sig in SIGNAL_SETS:
@@ -86,7 +102,7 @@ class RadarInterface(RadarInterfaceBase):
 
       # We shouldn't see duplicate track ids
       if obj_id in seen_ids:
-        ret.errors.radarFault = True
+        ret.errors.canError = True
         return ret
 
       seen_ids.add(obj_id)
@@ -99,7 +115,7 @@ class RadarInterface(RadarInterfaceBase):
       else:
         pt = self.pts[obj_id]
 
-      pt.dRel = msg[long_sig]
+      pt.dRel = msg[long_sig] - DREL_FRONT_EDGE_MARGIN
       pt.yRel = msg[lat_sig]
       pt.vRel = msg[vel_sig]
 
