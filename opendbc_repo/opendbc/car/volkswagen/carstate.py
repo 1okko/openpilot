@@ -298,9 +298,11 @@ class CarState(CarStateBase):
 
     tsk_faulted = pt_cp.vl["Motor_51"]["TSK_Status"] in (6, 7)
     engine_off = pt_cp.vl["Motor_54"]["Engine_On"] == 0
-    # Long_Control_Inhibit is currently identified only in the MEB DBC, not in the MQB EVO one
-    long_control_inhibit = (self.CP.flags & VolkswagenFlags.MEB and
-                            pt_cp.vl["VMM_02"]["Long_Control_Inhibit"] == 2)
+    # Long_Control_Inhibit is currently identified only in the MEB DBC, not in the MQB EVO one.
+    # bool() is required: CP.flags is an int, so "& IntFlag" returns an IntFlag instance and the
+    # False case (MQB EVO) would leak that object into the capnp bool field carNotReady.
+    long_control_inhibit = (bool(self.CP.flags & VolkswagenFlags.MEB)
+                            and pt_cp.vl.get("VMM_02", {}).get("Long_Control_Inhibit", 0) == 2)
     ret.accFaulted = (self.update_acc_fault(tsk_faulted, engine_off, long_control_inhibit) or
                       ext_cp.vl["AWV_03"]["AWV_Unavailable"] == 1)  # AEB unavailable (i.e. radar covered)
 
