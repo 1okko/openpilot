@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 export ATHENA_HOST='ws://athena.mr-one.cn'
 export API_HOST='http://res.mr-one.cn'
+# TEMPORARY: this device hangs in the VIN/FW query, skip it and force the car model
+export SKIP_FW_QUERY=1
+export FINGERPRINT=AUDI_A3_MK4
 # Skip onboarding on startup
 echo -n "2" > /data/params/d/HasAcceptedTerms
 echo -n "1.0" > /data/params/d/HasAcceptedTermsSP
