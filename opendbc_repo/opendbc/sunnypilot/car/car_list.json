@@ -1,12 +1,4 @@
 {
-    "NEW_VW Audi RS3 2026": {
-      "platform": "NEW_VW_AUDI_A3_MK4",
-      "make": "NEW_VW",
-      "brand": "new_vw",
-      "model": "RS3",
-      "year": ["2026"],
-      "package": "All"
-    },
   "Acura ILX 2016-18": {
     "platform": "ACURA_ILX",
     "make": "Acura",
