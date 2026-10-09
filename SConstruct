@@ -291,6 +291,7 @@ SConscript([
   'openpilot/selfdrive/locationd/SConscript',
   'openpilot/selfdrive/modeld/SConscript',
   'openpilot/selfdrive/ui/SConscript',
+  'openpilot/selfdrive/bigmodeld/SConscript',
 ])
 
 SConscript(['openpilot/sunnypilot/SConscript'])

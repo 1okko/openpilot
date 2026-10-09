@@ -8,6 +8,9 @@
 inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"AccessToken", {CLEAR_ON_MANAGER_START | DONT_LOG, STRING}},
     {"AdbEnabled", {PERSISTENT | BACKUP, BOOL}},
+    {"BigmodelServerHost", {PERSISTENT | BACKUP, STRING, ""}},  // manual IP; empty = mDNS discovery
+    {"BigmodelToggle", {PERSISTENT | BACKUP, BOOL}},          // "remote big model" toggle (offroad only, default off)
+    {"BigmodelLinkState", {CLEAR_ON_MANAGER_START | DONT_LOG, STRING, ""}},  // link state written by bigmodeld
     {"AlwaysOnDM", {PERSISTENT | BACKUP, BOOL}},
     {"BeepEnabled", {PERSISTENT | BACKUP, BOOL, "1"}},
     {"ApiCache_Device", {PERSISTENT, STRING}},

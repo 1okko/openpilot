@@ -12,6 +12,8 @@ else:
     frameworks += ['VideoToolbox', 'CoreMedia', 'CoreFoundation', 'CoreVideo']
 
 logger_lib = env.Library('logger', src)
+
+Export('logger_lib')
 libs.insert(0, logger_lib)
 
 env.Program('loggerd', ['loggerd.cc'], LIBS=libs, FRAMEWORKS=frameworks)

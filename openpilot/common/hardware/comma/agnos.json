@@ -66,19 +66,14 @@
     "url": "https://commadist.azureedge.net/agnosupdate/boot-0191529aa97d90d1fa04b472d80230b777606459e1e1e9e2323c9519839827b4.img.xz"
   },
   {
-    "alt": {
-      "hash": "6da24e3033d1604821b1a6b2b7f5ca6434e689d826c97f62c7583e7be724d868",
-      "size": 4718592000,
-      "url": "https://pub-c2f6aecf8ae1480090fc1e130c185fa2.r2.dev/system-6da24e3033d1604821b1a6b2b7f5ca6434e689d826c97f62c7583e7be724d868.img"
-    },
-    "full_check": false,
-    "has_ab": true,
-    "hash": "530cf466eef1fb6b1a66ec873f6be811c571a9dca8cb86e5282cc1157d7033be",
-    "hash_raw": "6da24e3033d1604821b1a6b2b7f5ca6434e689d826c97f62c7583e7be724d868",
     "name": "system",
-    "ondevice_hash": "6da24e3033d1604821b1a6b2b7f5ca6434e689d826c97f62c7583e7be724d868",
+    "url": "https://tp.diaperastiko.top/agnos/19.6.27/system-c61253f8f20f5d34efeeda70e0362bf02332eaaeb6bf1d04d654a8e19e52cec1.img.xz",
+    "hash": "9cad0b63a1ffafd4f4be7484dc035d7b12a650eb254becadc5362ca4772e9459",
+    "hash_raw": "c61253f8f20f5d34efeeda70e0362bf02332eaaeb6bf1d04d654a8e19e52cec1",
     "size": 4718592000,
     "sparse": true,
-    "url": "https://pub-c2f6aecf8ae1480090fc1e130c185fa2.r2.dev/system-530cf466eef1fb6b1a66ec873f6be811c571a9dca8cb86e5282cc1157d7033be.img.xz"
+    "full_check": false,
+    "has_ab": true,
+    "ondevice_hash": "976e3d27c076a2b0c3570ffffc21012f2e830adc201c644519e2e70cef3a425e"
   }
 ]

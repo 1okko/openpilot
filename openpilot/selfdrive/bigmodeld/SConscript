@@ -1,0 +1,15 @@
+Import('env', 'arch', 'messaging', 'common', 'visionipc', 'ffmpeg_libs', 'logger_lib')
+
+# bigmodeld（16 号 C4 上行进程）：V4L2 硬编 + VisionIPC + cereal，只在设备构建
+if arch != "comma_arm64":
+  Return()
+
+libs = [logger_lib, common, messaging, visionipc] + ffmpeg_libs + ['pthread', 'm', 'zstd']
+
+# warp 在取帧关键路径上：-O3 比 -O2 快 1.5x（C4 实测 3.6→2.4 ms/路）
+warp_pack = env.Object('warp_pack.cpp', CCFLAGS=env['CCFLAGS'] + ['-O3'])
+
+env.Program('bigmodeld',
+            ['main.cc', 'frame_codec.cpp', 'frame_meta.cpp', 'frame_scheduler.cpp',
+             'uplink_sender.cpp', 'server_locator.cpp', warp_pack],
+            LIBS=libs)

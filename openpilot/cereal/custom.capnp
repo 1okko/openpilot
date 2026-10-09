@@ -463,6 +463,37 @@ struct ModelDataV2SP @0xa1680744031fdb2d {
   leftLaneChangeEdgeBlock @1 :Bool;
   rightLaneChangeEdgeBlock @2 :Bool;
 
+  # --- remote big model (bigmodeld) ---
+  bigActionT @3 :List(Float32);  # [lat, long] seconds
+  desireClass @4 :UInt8;         # DH.desire level (log.Desire index)
+  bigLatencyMs @5 :Float32;      # REPLY arrival - timestamp_eof (ms), 0 = no reply this frame
+  cameraToModelMs @6 :Float32;   # frame eof -> modeld receive (ms)
+  bigLateReplyMs @7 :Float32;
+  bigLateReplyCount @8 :UInt16;
+  bigStages @9 :BigStageTimes;
+  bigSource @10 :BigSource;
+  bigDeadlineMs @11 :Float32;
+
+  struct BigStageTimes {
+    captureMs @0 :Float32;
+    warpMs @1 :Float32;
+    pairWaitMs @2 :Float32;
+    encodeMs @3 :Float32;
+    sendMs @4 :Float32;
+    replyWaitMs @5 :Float32;
+    phoneTotalMs @6 :Float32;
+  }
+
+  enum BigSource {
+    off @0;
+    big @1;
+    warmup @2;
+    linkDown @3;
+    timeout @4;
+    late @5;
+    zeroOutput @6;
+  }
+
   enum TurnDirection {
     none @0;
     turnLeft @1;
@@ -470,7 +501,12 @@ struct ModelDataV2SP @0xa1680744031fdb2d {
   }
 }
 
-struct CustomReserved10 @0xcb9fd56c7057593a {
+struct BigModelReply @0xcb9fd56c7057593a {
+  # BGM1 REPLY, handed over by modeld (layout in bigmodeld/frame_codec.h)
+  tEof @0 :UInt64;
+  flags @1 :UInt16;            # bit0 = phone started a new sequence, bit1 = zero-image used at t-4
+  outputs @2 :List(Float32);   # outputs[0:2066)
+  stages @3 :ModelDataV2SP.BigStageTimes;
 }
 
 struct CustomReserved11 @0xc2243c65e0340384 {
