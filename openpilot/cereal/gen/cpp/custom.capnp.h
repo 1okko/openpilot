@@ -241,6 +241,18 @@ CAPNP_DECLARE_SCHEMA(9e62278160b7df26);
 CAPNP_DECLARE_SCHEMA(b86e6369214c01c8);
 CAPNP_DECLARE_SCHEMA(f416ec09499d9d19);
 CAPNP_DECLARE_SCHEMA(a1680744031fdb2d);
+CAPNP_DECLARE_SCHEMA(cf141966d082378b);
+CAPNP_DECLARE_SCHEMA(a3cddd2d3a1a210c);
+enum class BigSource_a3cddd2d3a1a210c: uint16_t {
+  OFF,
+  BIG,
+  WARMUP,
+  LINK_DOWN,
+  TIMEOUT,
+  LATE,
+  ZERO_OUTPUT,
+};
+CAPNP_DECLARE_ENUM(BigSource, a3cddd2d3a1a210c);
 CAPNP_DECLARE_SCHEMA(b73df234a23b0cc2);
 enum class TurnDirection_b73df234a23b0cc2: uint16_t {
   NONE,
@@ -834,26 +846,44 @@ struct ModelDataV2SP {
   class Reader;
   class Builder;
   class Pipeline;
+  struct BigStageTimes;
+  typedef ::capnp::schemas::BigSource_a3cddd2d3a1a210c BigSource;
+
   typedef ::capnp::schemas::TurnDirection_b73df234a23b0cc2 TurnDirection;
 
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(a1680744031fdb2d, 1, 0)
+    CAPNP_DECLARE_STRUCT_HEADER(a1680744031fdb2d, 3, 2)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
   };
 };
 
-struct CustomReserved10 {
-  CustomReserved10() = delete;
+struct ModelDataV2SP::BigStageTimes {
+  BigStageTimes() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(cb9fd56c7057593a, 0, 0)
+    CAPNP_DECLARE_STRUCT_HEADER(cf141966d082378b, 4, 0)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct BigModelReply {
+  BigModelReply() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(cb9fd56c7057593a, 2, 2)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
@@ -4564,6 +4594,26 @@ public:
 
   inline bool getRightLaneChangeEdgeBlock() const;
 
+  inline bool hasBigActionT() const;
+  inline  ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Reader getBigActionT() const;
+
+  inline  ::uint8_t getDesireClass() const;
+
+  inline float getBigLatencyMs() const;
+
+  inline float getCameraToModelMs() const;
+
+  inline float getBigLateReplyMs() const;
+
+  inline  ::uint16_t getBigLateReplyCount() const;
+
+  inline bool hasBigStages() const;
+  inline  ::cereal::ModelDataV2SP::BigStageTimes::Reader getBigStages() const;
+
+  inline  ::cereal::ModelDataV2SP::BigSource getBigSource() const;
+
+  inline float getBigDeadlineMs() const;
+
 private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -4601,6 +4651,42 @@ public:
   inline bool getRightLaneChangeEdgeBlock();
   inline void setRightLaneChangeEdgeBlock(bool value);
 
+  inline bool hasBigActionT();
+  inline  ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Builder getBigActionT();
+  inline void setBigActionT( ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Reader value);
+  inline void setBigActionT(::kj::ArrayPtr<const float> value);
+  inline  ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Builder initBigActionT(unsigned int size);
+  inline void adoptBigActionT(::capnp::Orphan< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>&& value);
+  inline ::capnp::Orphan< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>> disownBigActionT();
+
+  inline  ::uint8_t getDesireClass();
+  inline void setDesireClass( ::uint8_t value);
+
+  inline float getBigLatencyMs();
+  inline void setBigLatencyMs(float value);
+
+  inline float getCameraToModelMs();
+  inline void setCameraToModelMs(float value);
+
+  inline float getBigLateReplyMs();
+  inline void setBigLateReplyMs(float value);
+
+  inline  ::uint16_t getBigLateReplyCount();
+  inline void setBigLateReplyCount( ::uint16_t value);
+
+  inline bool hasBigStages();
+  inline  ::cereal::ModelDataV2SP::BigStageTimes::Builder getBigStages();
+  inline void setBigStages( ::cereal::ModelDataV2SP::BigStageTimes::Reader value);
+  inline  ::cereal::ModelDataV2SP::BigStageTimes::Builder initBigStages();
+  inline void adoptBigStages(::capnp::Orphan< ::cereal::ModelDataV2SP::BigStageTimes>&& value);
+  inline ::capnp::Orphan< ::cereal::ModelDataV2SP::BigStageTimes> disownBigStages();
+
+  inline  ::cereal::ModelDataV2SP::BigSource getBigSource();
+  inline void setBigSource( ::cereal::ModelDataV2SP::BigSource value);
+
+  inline float getBigDeadlineMs();
+  inline void setBigDeadlineMs(float value);
+
 private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -4619,6 +4705,7 @@ public:
   inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
+  inline  ::cereal::ModelDataV2SP::BigStageTimes::Pipeline getBigStages();
 private:
   ::capnp::AnyPointer::Pipeline _typeless;
   friend class ::capnp::PipelineHook;
@@ -4627,9 +4714,9 @@ private:
 };
 #endif  // !CAPNP_LITE
 
-class CustomReserved10::Reader {
+class ModelDataV2SP::BigStageTimes::Reader {
 public:
-  typedef CustomReserved10 Reads;
+  typedef BigStageTimes Reads;
 
   Reader() = default;
   inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
@@ -4644,6 +4731,20 @@ public:
   }
 #endif  // !CAPNP_LITE
 
+  inline float getCaptureMs() const;
+
+  inline float getWarpMs() const;
+
+  inline float getPairWaitMs() const;
+
+  inline float getEncodeMs() const;
+
+  inline float getSendMs() const;
+
+  inline float getReplyWaitMs() const;
+
+  inline float getPhoneTotalMs() const;
+
 private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -4656,9 +4757,9 @@ private:
   friend class ::capnp::Orphanage;
 };
 
-class CustomReserved10::Builder {
+class ModelDataV2SP::BigStageTimes::Builder {
 public:
-  typedef CustomReserved10 Builds;
+  typedef BigStageTimes Builds;
 
   Builder() = delete;  // Deleted to discourage incorrect usage.
                        // You can explicitly initialize to nullptr instead.
@@ -4672,6 +4773,27 @@ public:
   inline ::kj::StringTree toString() const { return asReader().toString(); }
 #endif  // !CAPNP_LITE
 
+  inline float getCaptureMs();
+  inline void setCaptureMs(float value);
+
+  inline float getWarpMs();
+  inline void setWarpMs(float value);
+
+  inline float getPairWaitMs();
+  inline void setPairWaitMs(float value);
+
+  inline float getEncodeMs();
+  inline void setEncodeMs(float value);
+
+  inline float getSendMs();
+  inline void setSendMs(float value);
+
+  inline float getReplyWaitMs();
+  inline void setReplyWaitMs(float value);
+
+  inline float getPhoneTotalMs();
+  inline void setPhoneTotalMs(float value);
+
 private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -4682,14 +4804,117 @@ private:
 };
 
 #if !CAPNP_LITE
-class CustomReserved10::Pipeline {
+class ModelDataV2SP::BigStageTimes::Pipeline {
 public:
-  typedef CustomReserved10 Pipelines;
+  typedef BigStageTimes Pipelines;
 
   inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
   inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class BigModelReply::Reader {
+public:
+  typedef BigModelReply Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint64_t getTEof() const;
+
+  inline  ::uint16_t getFlags() const;
+
+  inline bool hasOutputs() const;
+  inline  ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Reader getOutputs() const;
+
+  inline bool hasStages() const;
+  inline  ::cereal::ModelDataV2SP::BigStageTimes::Reader getStages() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class BigModelReply::Builder {
+public:
+  typedef BigModelReply Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint64_t getTEof();
+  inline void setTEof( ::uint64_t value);
+
+  inline  ::uint16_t getFlags();
+  inline void setFlags( ::uint16_t value);
+
+  inline bool hasOutputs();
+  inline  ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Builder getOutputs();
+  inline void setOutputs( ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Reader value);
+  inline void setOutputs(::kj::ArrayPtr<const float> value);
+  inline  ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Builder initOutputs(unsigned int size);
+  inline void adoptOutputs(::capnp::Orphan< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>&& value);
+  inline ::capnp::Orphan< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>> disownOutputs();
+
+  inline bool hasStages();
+  inline  ::cereal::ModelDataV2SP::BigStageTimes::Builder getStages();
+  inline void setStages( ::cereal::ModelDataV2SP::BigStageTimes::Reader value);
+  inline  ::cereal::ModelDataV2SP::BigStageTimes::Builder initStages();
+  inline void adoptStages(::capnp::Orphan< ::cereal::ModelDataV2SP::BigStageTimes>&& value);
+  inline ::capnp::Orphan< ::cereal::ModelDataV2SP::BigStageTimes> disownStages();
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class BigModelReply::Pipeline {
+public:
+  typedef BigModelReply Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+  inline  ::cereal::ModelDataV2SP::BigStageTimes::Pipeline getStages();
 private:
   ::capnp::AnyPointer::Pipeline _typeless;
   friend class ::capnp::PipelineHook;
@@ -8951,6 +9176,384 @@ inline bool ModelDataV2SP::Builder::getRightLaneChangeEdgeBlock() {
 inline void ModelDataV2SP::Builder::setRightLaneChangeEdgeBlock(bool value) {
   _builder.setDataField<bool>(
       ::capnp::bounded<17>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool ModelDataV2SP::Reader::hasBigActionT() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool ModelDataV2SP::Builder::hasBigActionT() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Reader ModelDataV2SP::Reader::getBigActionT() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Builder ModelDataV2SP::Builder::getBigActionT() {
+  return ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void ModelDataV2SP::Builder::setBigActionT( ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline void ModelDataV2SP::Builder::setBigActionT(::kj::ArrayPtr<const float> value) {
+  ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Builder ModelDataV2SP::Builder::initBigActionT(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
+}
+inline void ModelDataV2SP::Builder::adoptBigActionT(
+    ::capnp::Orphan< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>> ModelDataV2SP::Builder::disownBigActionT() {
+  return ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline  ::uint8_t ModelDataV2SP::Reader::getDesireClass() const {
+  return _reader.getDataField< ::uint8_t>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint8_t ModelDataV2SP::Builder::getDesireClass() {
+  return _builder.getDataField< ::uint8_t>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::Builder::setDesireClass( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS, value);
+}
+
+inline float ModelDataV2SP::Reader::getBigLatencyMs() const {
+  return _reader.getDataField<float>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline float ModelDataV2SP::Builder::getBigLatencyMs() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::Builder::setBigLatencyMs(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline float ModelDataV2SP::Reader::getCameraToModelMs() const {
+  return _reader.getDataField<float>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline float ModelDataV2SP::Builder::getCameraToModelMs() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::Builder::setCameraToModelMs(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
+inline float ModelDataV2SP::Reader::getBigLateReplyMs() const {
+  return _reader.getDataField<float>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS);
+}
+
+inline float ModelDataV2SP::Builder::getBigLateReplyMs() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::Builder::setBigLateReplyMs(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint16_t ModelDataV2SP::Reader::getBigLateReplyCount() const {
+  return _reader.getDataField< ::uint16_t>(
+      ::capnp::bounded<8>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint16_t ModelDataV2SP::Builder::getBigLateReplyCount() {
+  return _builder.getDataField< ::uint16_t>(
+      ::capnp::bounded<8>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::Builder::setBigLateReplyCount( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
+      ::capnp::bounded<8>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool ModelDataV2SP::Reader::hasBigStages() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline bool ModelDataV2SP::Builder::hasBigStages() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline  ::cereal::ModelDataV2SP::BigStageTimes::Reader ModelDataV2SP::Reader::getBigStages() const {
+  return ::capnp::_::PointerHelpers< ::cereal::ModelDataV2SP::BigStageTimes>::get(_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline  ::cereal::ModelDataV2SP::BigStageTimes::Builder ModelDataV2SP::Builder::getBigStages() {
+  return ::capnp::_::PointerHelpers< ::cereal::ModelDataV2SP::BigStageTimes>::get(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::cereal::ModelDataV2SP::BigStageTimes::Pipeline ModelDataV2SP::Pipeline::getBigStages() {
+  return  ::cereal::ModelDataV2SP::BigStageTimes::Pipeline(_typeless.getPointerField(1));
+}
+#endif  // !CAPNP_LITE
+inline void ModelDataV2SP::Builder::setBigStages( ::cereal::ModelDataV2SP::BigStageTimes::Reader value) {
+  ::capnp::_::PointerHelpers< ::cereal::ModelDataV2SP::BigStageTimes>::set(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
+}
+inline  ::cereal::ModelDataV2SP::BigStageTimes::Builder ModelDataV2SP::Builder::initBigStages() {
+  return ::capnp::_::PointerHelpers< ::cereal::ModelDataV2SP::BigStageTimes>::init(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void ModelDataV2SP::Builder::adoptBigStages(
+    ::capnp::Orphan< ::cereal::ModelDataV2SP::BigStageTimes>&& value) {
+  ::capnp::_::PointerHelpers< ::cereal::ModelDataV2SP::BigStageTimes>::adopt(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::cereal::ModelDataV2SP::BigStageTimes> ModelDataV2SP::Builder::disownBigStages() {
+  return ::capnp::_::PointerHelpers< ::cereal::ModelDataV2SP::BigStageTimes>::disown(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline  ::cereal::ModelDataV2SP::BigSource ModelDataV2SP::Reader::getBigSource() const {
+  return _reader.getDataField< ::cereal::ModelDataV2SP::BigSource>(
+      ::capnp::bounded<9>() * ::capnp::ELEMENTS);
+}
+
+inline  ::cereal::ModelDataV2SP::BigSource ModelDataV2SP::Builder::getBigSource() {
+  return _builder.getDataField< ::cereal::ModelDataV2SP::BigSource>(
+      ::capnp::bounded<9>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::Builder::setBigSource( ::cereal::ModelDataV2SP::BigSource value) {
+  _builder.setDataField< ::cereal::ModelDataV2SP::BigSource>(
+      ::capnp::bounded<9>() * ::capnp::ELEMENTS, value);
+}
+
+inline float ModelDataV2SP::Reader::getBigDeadlineMs() const {
+  return _reader.getDataField<float>(
+      ::capnp::bounded<5>() * ::capnp::ELEMENTS);
+}
+
+inline float ModelDataV2SP::Builder::getBigDeadlineMs() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<5>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::Builder::setBigDeadlineMs(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<5>() * ::capnp::ELEMENTS, value);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Reader::getCaptureMs() const {
+  return _reader.getDataField<float>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Builder::getCaptureMs() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::BigStageTimes::Builder::setCaptureMs(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Reader::getWarpMs() const {
+  return _reader.getDataField<float>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Builder::getWarpMs() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::BigStageTimes::Builder::setWarpMs(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Reader::getPairWaitMs() const {
+  return _reader.getDataField<float>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Builder::getPairWaitMs() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::BigStageTimes::Builder::setPairWaitMs(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Reader::getEncodeMs() const {
+  return _reader.getDataField<float>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Builder::getEncodeMs() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::BigStageTimes::Builder::setEncodeMs(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS, value);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Reader::getSendMs() const {
+  return _reader.getDataField<float>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Builder::getSendMs() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::BigStageTimes::Builder::setSendMs(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS, value);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Reader::getReplyWaitMs() const {
+  return _reader.getDataField<float>(
+      ::capnp::bounded<5>() * ::capnp::ELEMENTS);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Builder::getReplyWaitMs() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<5>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::BigStageTimes::Builder::setReplyWaitMs(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<5>() * ::capnp::ELEMENTS, value);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Reader::getPhoneTotalMs() const {
+  return _reader.getDataField<float>(
+      ::capnp::bounded<6>() * ::capnp::ELEMENTS);
+}
+
+inline float ModelDataV2SP::BigStageTimes::Builder::getPhoneTotalMs() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<6>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::BigStageTimes::Builder::setPhoneTotalMs(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<6>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint64_t BigModelReply::Reader::getTEof() const {
+  return _reader.getDataField< ::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint64_t BigModelReply::Builder::getTEof() {
+  return _builder.getDataField< ::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void BigModelReply::Builder::setTEof( ::uint64_t value) {
+  _builder.setDataField< ::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint16_t BigModelReply::Reader::getFlags() const {
+  return _reader.getDataField< ::uint16_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint16_t BigModelReply::Builder::getFlags() {
+  return _builder.getDataField< ::uint16_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+inline void BigModelReply::Builder::setFlags( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool BigModelReply::Reader::hasOutputs() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool BigModelReply::Builder::hasOutputs() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Reader BigModelReply::Reader::getOutputs() const {
+  return ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Builder BigModelReply::Builder::getOutputs() {
+  return ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void BigModelReply::Builder::setOutputs( ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline void BigModelReply::Builder::setOutputs(::kj::ArrayPtr<const float> value) {
+  ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>::Builder BigModelReply::Builder::initOutputs(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
+}
+inline void BigModelReply::Builder::adoptOutputs(
+    ::capnp::Orphan< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>> BigModelReply::Builder::disownOutputs() {
+  return ::capnp::_::PointerHelpers< ::capnp::List<float,  ::capnp::Kind::PRIMITIVE>>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool BigModelReply::Reader::hasStages() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline bool BigModelReply::Builder::hasStages() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline  ::cereal::ModelDataV2SP::BigStageTimes::Reader BigModelReply::Reader::getStages() const {
+  return ::capnp::_::PointerHelpers< ::cereal::ModelDataV2SP::BigStageTimes>::get(_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline  ::cereal::ModelDataV2SP::BigStageTimes::Builder BigModelReply::Builder::getStages() {
+  return ::capnp::_::PointerHelpers< ::cereal::ModelDataV2SP::BigStageTimes>::get(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::cereal::ModelDataV2SP::BigStageTimes::Pipeline BigModelReply::Pipeline::getStages() {
+  return  ::cereal::ModelDataV2SP::BigStageTimes::Pipeline(_typeless.getPointerField(1));
+}
+#endif  // !CAPNP_LITE
+inline void BigModelReply::Builder::setStages( ::cereal::ModelDataV2SP::BigStageTimes::Reader value) {
+  ::capnp::_::PointerHelpers< ::cereal::ModelDataV2SP::BigStageTimes>::set(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
+}
+inline  ::cereal::ModelDataV2SP::BigStageTimes::Builder BigModelReply::Builder::initStages() {
+  return ::capnp::_::PointerHelpers< ::cereal::ModelDataV2SP::BigStageTimes>::init(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void BigModelReply::Builder::adoptStages(
+    ::capnp::Orphan< ::cereal::ModelDataV2SP::BigStageTimes>&& value) {
+  ::capnp::_::PointerHelpers< ::cereal::ModelDataV2SP::BigStageTimes>::adopt(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::cereal::ModelDataV2SP::BigStageTimes> BigModelReply::Builder::disownStages() {
+  return ::capnp::_::PointerHelpers< ::cereal::ModelDataV2SP::BigStageTimes>::disown(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
 }  // namespace
