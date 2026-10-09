@@ -56,11 +56,14 @@ def compile_model(onnx_path, pkl_path):
   onnx_path, target_pkl_path = File(onnx_path).abspath, File(pkl_path).abspath
   cmd = (f'{tg_flags} {mac_brew_string} {taskset}python3 "{compiler}/compile_onnx.py" '
          f'"{onnx_path}" "{target_pkl_path}" --device-input "*" --out-of-band --benchmark-runs 1')
-  lenv.Command(
-    target_pkl_path,
-    tinygrad_files + [onnx_path, Value(cmd)],
-    Action(cmd, "  [ONNX] $TARGET"),
-  )
+  # The pkl ships with the repo; only regenerate when it is missing (a full tinygrad
+  # tree change otherwise invalidates every pkl target and requires the tinygrad scripts).
+  if not os.path.exists(target_pkl_path):
+    lenv.Command(
+      target_pkl_path,
+      tinygrad_files + [onnx_path, Value(cmd)],
+      Action(cmd, "  [ONNX] $TARGET"),
+    )
 
 compile_model('models/dmonitoring_model.onnx', 'models/dmonitoring_model_tinygrad.pkl')
 compile_model('models/driving_supercombo.onnx', 'models/driving_tinygrad.pkl')
@@ -75,10 +78,12 @@ for chestnut in [False, True] if CHESTNUT else [False]:
            f'--frame {cam_w},{cam_h},{stride},{y_height},{uv_height},{stride * (y_height + uv_height)} '
            f'--warp-to {model_w}x{model_h} --layout yuv420 --frames 2 '
            f'--output {warp_pkl_path}')
-    action = chestnut_action(cmd) if chestnut else cmd
-    node = lenv.Command(warp_pkl_path, tinygrad_files + warp_deps + [Value(cmd)], action)
-    if chestnut:
-      lenv.SideEffect(chestnut_lock, node)
+    # Skip when the pkl already ships with the repo (see compile_model above)
+    if not os.path.exists(warp_pkl_path):
+      action = chestnut_action(cmd) if chestnut else cmd
+      node = lenv.Command(warp_pkl_path, tinygrad_files + warp_deps + [Value(cmd)], action)
+      if chestnut:
+        lenv.SideEffect(chestnut_lock, node)
 
 dm_w, dm_h = DM_INPUT_SIZE
 for cam_w, cam_h in camera_configs:
@@ -87,4 +92,5 @@ for cam_w, cam_h in camera_configs:
   cmd = (f'{tg_flags} {mac_brew_string} python3 "{compiler}/compile_warp.py" '
          f'--frame {cam_w},{cam_h},{stride},{y_height},{uv_height},{frame_size} --warp-to {dm_w}x{dm_h} '
          f'--layout luma --border-fill 16 --transform-device NPY --output {dm_pkl_path}')
-  lenv.Command(dm_pkl_path, tinygrad_files + warp_deps + [Value(cmd)], cmd)
+  if not os.path.exists(dm_pkl_path):
+    lenv.Command(dm_pkl_path, tinygrad_files + warp_deps + [Value(cmd)], cmd)
