@@ -18,6 +18,9 @@ public:
     uint32_t input_format = V4L2_PIX_FMT_NV12;
     InputDoneCallback input_done_callback;
     bool max_performance = false;
+    // forwarded to the VideoEncoder base: when set (and packet_callback is not), encoded
+    // packets are delivered through it instead of being published to msgq
+    VideoEncoder::OutputCallback output_callback;
   };
 
   V4LEncoder(const EncoderInfo &encoder_info, int in_width, int in_height);

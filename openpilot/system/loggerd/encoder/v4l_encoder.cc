@@ -156,7 +156,7 @@ V4LEncoder::V4LEncoder(const EncoderInfo &encoder_info, int in_width, int in_hei
     : V4LEncoder(encoder_info, in_width, in_height, Options{}) {}
 
 V4LEncoder::V4LEncoder(const EncoderInfo &encoder_info, int in_width, int in_height, Options options)
-    : VideoEncoder(encoder_info, in_width, in_height), packet_callback(std::move(options.packet_callback)),
+    : VideoEncoder(encoder_info, in_width, in_height, std::move(options.output_callback)), packet_callback(std::move(options.packet_callback)),
       input_done_callback(std::move(options.input_done_callback)) {
   fd = HANDLE_EINTR(open("/dev/v4l/by-path/platform-aa00000.qcom_vidc-video-index1", O_RDWR|O_NONBLOCK));
   assert(fd >= 0);

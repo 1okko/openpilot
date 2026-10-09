@@ -10,6 +10,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <thread>
 #include <vector>
@@ -21,7 +22,15 @@
 
 class VideoEncoder {
 public:
-  VideoEncoder(const EncoderInfo &encoder_info, int in_width, int in_height);
+  // Optional output sink. When set at construction, encoded packets are delivered here instead
+  // of being published to msgq: no PubMaster is created at all. Runs on the encoder's dequeue
+  // thread and output buffers are requeued right after it returns, so copy the data before
+  // returning. `header` is the codec config (e.g. HEVC VPS/SPS/PPS) and is only passed on
+  // keyframes; header + dat concatenated form a complete access unit.
+  using OutputCallback = std::function<void(int segment_num, uint32_t idx, VisionIpcBufExtra &extra,
+                                            unsigned int flags, kj::ArrayPtr<capnp::byte> header,
+                                            kj::ArrayPtr<capnp::byte> dat)>;
+  VideoEncoder(const EncoderInfo &encoder_info, int in_width, int in_height, OutputCallback output_cb = nullptr);
   virtual ~VideoEncoder() {}
   virtual int encode_frame(VisionBuf* buf, VisionIpcBufExtra *extra) = 0;
   virtual void encoder_open() = 0;
@@ -41,4 +50,5 @@ private:
   int cnt = 0;
   std::unique_ptr<PubMaster> pm;
   std::vector<capnp::byte> msg_cache;
+  OutputCallback output_cb;
 };
