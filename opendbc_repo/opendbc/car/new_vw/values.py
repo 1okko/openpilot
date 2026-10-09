@@ -11,7 +11,7 @@ from opendbc.car.volkswagen.values import (CanBus, CarControllerParams, FW_QUERY
 @dataclass
 class NewVwCarDocs(CarDocs):
   package: str = "All"
-  car_parts: CarParts = field(default_factory=CarParts.common([CarHarness.vw_meb]))
+  car_parts: CarParts = field(default_factory=CarParts.common([CarHarness.vw_j533]))
 
 
 @dataclass
