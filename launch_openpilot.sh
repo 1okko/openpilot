@@ -22,14 +22,23 @@ if [ -f "$TIME_SNAPSHOT" ]; then
   NOW_TIME=$(date +%s)
   # only when the clock is bogus (before 2020) and the snapshot looks sane (after 2020)
   if [ "$NOW_TIME" -lt 1577836800 ] && [ "${SAVED_TIME:-0}" -gt 1577836800 ]; then
-    sudo date -s "@$SAVED_TIME" >/dev/null 2>&1 && echo "[time] restored from snapshot: $(date)"
+    if sudo date -s "@$SAVED_TIME" >/dev/null 2>&1; then
+      echo "[time] restored from snapshot: $(date)"
+      printf 'restored %s from %s\n' "$(date -Is)" "$SAVED_TIME" >> /data/time_seed.log 2>/dev/null
+    fi
   fi
 fi
 
-# keep the snapshot fresh so the next boot starts close to the real time
+# keep the snapshot fresh so the next boot starts close to the real time.
+# Only write a plausible, non-decreasing time: right after boot the clock is still 1970 (or the
+# stale value from the previous unsynced boot), and saving that would poison the next boot.
 (
   while true; do
-    date +%s > "$TIME_SNAPSHOT.tmp" 2>/dev/null && mv "$TIME_SNAPSHOT.tmp" "$TIME_SNAPSHOT" 2>/dev/null
+    NOW=$(date +%s)
+    OLD=$(cat "$TIME_SNAPSHOT" 2>/dev/null || echo 0)
+    if [ "$NOW" -gt 1577836800 ] && [ "$NOW" -ge "$OLD" ]; then
+      printf '%s\n' "$NOW" > "$TIME_SNAPSHOT.tmp" 2>/dev/null && mv "$TIME_SNAPSHOT.tmp" "$TIME_SNAPSHOT" 2>/dev/null
+    fi
     sleep 300
   done
 ) &
