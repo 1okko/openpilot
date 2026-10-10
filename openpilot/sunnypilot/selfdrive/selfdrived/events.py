@@ -253,11 +253,32 @@ EVENTS_SP: dict[int, dict[str, Alert | AlertCallbackType]] = {
       Priority.LOW, VisualAlert.none, AudibleAlert.prompt, 0.1),
   },
 
+  EventNameSP.bigModelAvailable: {
+    ET.PERMANENT: Alert(
+      "Big Model Ready",
+      "Re-engage to switch",
+      AlertStatus.normal, AlertSize.mid,
+      Priority.LOW, VisualAlert.none, AudibleAlert.prompt, .2),
+  },
+
   EventNameSP.bigModelReady: {
     ET.PERMANENT: Alert(
       "Big Model Ready",
       "",
       AlertStatus.normal, AlertSize.small,
       Priority.LOW, VisualAlert.none, AudibleAlert.prompt, 2.),
+  },
+
+  # an accelerator lost or too slow while engaged: the small model drives on
+  # from a reset history and nothing disengages. As loud as a soft disable for
+  # 5 s (accelerator_events), but it says what happened, not TAKE CONTROL:
+  # nothing has let go, and a driver told to take control on every drop read
+  # it as a disengage (2026-10-04). A disengage ends it
+  EventNameSP.bigModelLinkLost: {
+    ET.WARNING: Alert(
+      "Big Model Lost",
+      "Using small model",
+      AlertStatus.userPrompt, AlertSize.mid,
+      Priority.MID, VisualAlert.steerRequired, AudibleAlert.warningSoft, .2),
   },
 }

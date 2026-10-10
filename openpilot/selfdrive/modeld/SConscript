@@ -17,6 +17,7 @@ tinygrad_files = ["#"+x for x in glob.glob(env.Dir("#tinygrad_repo").relpath + "
                   if 'pycache' not in x and os.path.isfile(os.path.join(tinygrad_root, x))]
 
 camera_configs = [(c.width, c.height) for c in (_ar_ox_fisheye, _os_fisheye)]
+Export('camera_configs')
 
 if arch == 'comma_arm64':
   tg_flags = 'DEV=QCOM IMAGE=1 FLOAT16=1 NOLOCALS=1 JIT_BATCH_SIZE=0 OPENPILOT_HACKS=1'

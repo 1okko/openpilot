@@ -354,6 +354,14 @@ struct OnroadEventSP @0xda96579883444c35 {
     e2eChime @23;
     laneChangeRoadEdge @24;
     bigModelReady @25;
+    controlsMismatchLateralWarning @26;
+    silentPedalPressed @27;
+    mazdaStockCtsActive @28;
+    stockEcuNotReady @29;
+    stockEcuInitializing @30;
+    stockEcuReady @31;
+    bigModelAvailable @32;
+    bigModelLinkLost @33;
   }
 }
 

@@ -1,6 +1,8 @@
 import io
 import pickle
+import shutil
 import struct
+import tempfile
 from pathlib import Path
 
 from openpilot.common.file_chunker import get_manifest_path
@@ -22,6 +24,25 @@ def load_oob(f):
         raise EOFError("incomplete model buffer")
       yield pb
   return pickle.load(io.BytesIO(opcodes), buffers=buffers())
+
+def dump_oob(obj, f):
+  with tempfile.TemporaryFile(dir=".") as tmp:
+    def buffer_callback(pb: pickle.PickleBuffer):
+      m = pb.raw()
+      tmp.write(struct.pack('<q', m.nbytes))
+      tmp.write(m)
+      pb.release() # keep peak ram at ~1 buffer
+    stream = io.BytesIO()
+    pickle.Pickler(stream, protocol=5, buffer_callback=buffer_callback).dump(obj)
+    opcodes = stream.getvalue()
+    f.write(struct.pack('<q', len(opcodes)))
+    f.write(opcodes)
+    tmp.seek(0)
+    shutil.copyfileobj(tmp, f)
+
+# the top level of the pkl compile_modeld.py writes. checked at both ends: a pkl from another
+# compile_modeld.py unpickles fine and only fails on the first key it lacks, as a bare KeyError
+MODELD_PKL_KEYS = ('metadata', 'input_devices', 'run_model')
 
 def chestnut_present() -> bool:
   for d in USB_DEVICES_PATH.glob("*"):

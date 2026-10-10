@@ -24,6 +24,7 @@ from openpilot.common.hardware.usb import CHESTNUT_FW_VERSION, CHESTNUT_USB_PROD
 from openpilot.common.linux import LinuxSystemStats
 from openpilot.system.loggerd.config import get_available_percent
 from openpilot.common.swaglog import cloudlog
+from openpilot.sunnypilot import jetlink_adapter
 from openpilot.sunnypilot.system.statsd import statlog
 from openpilot.system.hardware.power_monitoring import PowerMonitoring
 from openpilot.system.hardware.fan_controller import FanController
@@ -215,6 +216,8 @@ def hardware_thread(end_event, hw_queue) -> None:
   started_seen = False
   startup_blocked_ts: float | None = None
   thermal_status = ThermalStatus.ok
+  # when the accelerator was asked to power off with the comma; see the shutdown check
+  accelerator_off_ts: float | None = None
 
   last_hw_state = HardwareState(
     network_type=NetworkType.none,
@@ -319,6 +322,11 @@ def hardware_thread(end_event, hw_queue) -> None:
                            params.get_bool("ChestnutLoading"), params.get("ChestnutActive"),
                            chestnut_state if chestnut_valid else None, set_offroad_alert_if_changed)
 
+    # an enabled accelerator that cannot come up is otherwise silently absent
+    accelerator_error = jetlink_adapter.reason()
+    set_offroad_alert_if_changed("Offroad_AcceleratorUnavailable", accelerator_error is not None,
+                                 extra_text=accelerator_error)
+
     # Suppress the boot-time CPU temperature spike in the UI and fan control.
     startup_temp_grace = time.monotonic() - startup_ts < STARTUP_TEMP_GRACE_S
     # this subset is only used for offroad
@@ -366,6 +374,8 @@ def hardware_thread(end_event, hw_queue) -> None:
     startup_conditions["not_uninstalling"] = not params.get_bool("DoUninstall")
     startup_conditions["accepted_terms"] = params.get("HasAcceptedTerms") == terms_version
     startup_conditions["accepted_terms_sp"] = params.get("HasAcceptedTermsSP") == terms_version_sp
+    # the accelerator was asked to power off with the comma: no drive may start under the power-off that follows
+    startup_conditions["not_powering_off"] = accelerator_off_ts is None
 
     # with 2% left, we killall, otherwise the phone will take a long time to boot
     startup_conditions["free_space"] = msg.deviceState.freeSpacePercent > 2
@@ -467,9 +477,14 @@ def hardware_thread(end_event, hw_queue) -> None:
     msg.deviceState.somPowerDrawW = som_power_draw
 
     # Check if we need to shut down
-    if power_monitor.should_shutdown(onroad_conditions["ignition"], in_car, off_ts, started_seen):
-      cloudlog.warning(f"shutting device down, offroad since {off_ts}")
-      params.put_bool("DoShutdown", True, block=True)
+    if accelerator_off_ts is not None or power_monitor.should_shutdown(onroad_conditions["ignition"], in_car, off_ts, started_seen):
+      if accelerator_off_ts is None:
+        cloudlog.warning(f"shutting device down, offroad since {off_ts}")
+        # an accelerator on its own supply outlives us: ask it once, and keep publishing while it powers off
+        jetlink_adapter.request_shutdown(f"comma shutting down, offroad since {off_ts}")
+        accelerator_off_ts = time.monotonic()
+      if not jetlink_adapter.shutdown_pending() or time.monotonic() - accelerator_off_ts >= 25.0:
+        params.put_bool("DoShutdown", True, block=True)
 
     msg.deviceState.started = started_ts is not None and not offroad_mode
     msg.deviceState.startedMonoTime = int(1e9*(started_ts or 0))
