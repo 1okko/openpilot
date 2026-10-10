@@ -143,7 +143,11 @@ def _as_memoryview(buf, **kwargs):
   try:
     return buf.as_memoryview(**kwargs)
   except TypeError:
-    return buf.as_memoryview()
+    # this fork's tinygrad spells the zero-copy flag allow_zero_copy
+    try:
+      return buf.as_memoryview(allow_zero_copy=kwargs.get('force_zero_copy', False))
+    except TypeError:
+      return buf.as_memoryview()
 
 class Warp:
   """The built warp as modeld's frame loop runs it: start() with two camera
