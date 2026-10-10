@@ -62,7 +62,7 @@ def big_model_state() -> str | None:
   return {ChestnutState.UNCOMPILED: 'failed',
           ChestnutState.FAILED: 'failed',
           ChestnutState.LOADING: 'loading',
-          ChestnutState.WAITING: 'ready'}.get(ui_state.chestnut_state)
+          ChestnutState.READY: 'ready'}.get(ui_state.chestnut_state)
 
 
 def big_model_progress() -> tuple[str, float, str] | None:
