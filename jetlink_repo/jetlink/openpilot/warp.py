@@ -210,7 +210,13 @@ class Warp:
     self._replay = jit.captured
     if self._device.startswith('QCOM'):
       inputs = (blobs[1].uop.base, self._big_tfm_buf, blobs[0].uop.base, self._tfm_buf)
-      self._replay, self._tfm, self._big_tfm = _graph_alone(jit.captured, inputs)
+      try:
+        self._replay, self._tfm, self._big_tfm = _graph_alone(jit.captured, inputs)
+      except Exception:
+        # this fork's tinygrad captures the graph as a plain CALL step rather
+        # than a CUSTOM_FUNCTION, so the graph-alone trim does not recognise
+        # it. The full capture runs the same kernels, transforms included.
+        self._log.warning("jetlink: keeping the whole warp capture (%s)", type(sys.exc_info()[1]).__name__)
 
   def start(self, frame: int, big_frame: int, tfm, big_tfm) -> None:
     """Warp the camera buffers at these addresses under their transforms.
