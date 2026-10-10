@@ -45,6 +45,7 @@ from openpilot.sunnypilot.modeld_v2.helpers import load_oob
 from openpilot.sunnypilot.modeld_v2.model_adapters import get_model_adapter
 from openpilot.sunnypilot.models.helpers import get_active_bundle
 from openpilot.sunnypilot.selfdrive.controls.lib.relc import RoadEdgeLaneChangeController
+from openpilot.sunnypilot import jetlink_adapter
 
 PROCESS_NAME = "openpilot.selfdrive.modeld.modeld_tinygrad"
 BIG_MODEL_TIMEOUT = 60
@@ -272,11 +273,15 @@ def main(demo=False):
 
   cloudlog.bind(daemon=PROCESS_NAME)
   setproctitle(PROCESS_NAME)
-  config_realtime_process(7, 54)
 
   CHESTNUT = chestnut_present()
   if CHESTNUT:
     os.environ['HCQDEV_WAIT_TIMEOUT_MS'] = '3000'
+  # before going realtime: prepare() starts tinygrad's device thread, which would inherit FIFO 54 on core 7
+  if not CHESTNUT:
+    jetlink_adapter.prepare()
+
+  config_realtime_process(7, 54)
 
   params = Params()
   params.put_bool("ChestnutLoading", CHESTNUT)
@@ -328,6 +333,8 @@ def main(demo=False):
   small_model = ModelState(cam_w=vipc_client_main.width, cam_h=vipc_client_main.height, chestnut=False) if model is None or CHESTNUT else None
   if model is None:
     model = small_model
+  if (joined := jetlink_adapter.attach(small_model, vipc_client_main.width, vipc_client_main.height)) is not None:
+    model = joined
   params.put_bool("ChestnutLoading", False)
   assert model is not None
   cloudlog.warning(f"models loaded in {time.monotonic() - st:.1f}s, modeld starting")
@@ -439,6 +446,14 @@ def main(demo=False):
     frame_drop_ratio = frames_dropped / (1 + frames_dropped)
 
     bufs = {name: buf_extra if 'big' in name else buf_main for name in model.vision_input_names}
+    # a model can change which model drives inside run() (jetlink's joining
+    # model counts its handovers); the stall of one is not lag, as for the
+    # fallback below, and nor are the drops of the frame it happens on. The
+    # joining model hands a large model back on this share of dropped frames,
+    # and swaps one in only while nothing is in control
+    model.in_control = jetlink_adapter.in_control(sm)
+    model.frame_drop_ratio = frame_drop_ratio
+    handovers = getattr(model, 'handovers', 0)
     transforms = {name: model_transform_extra if 'big' in name else model_transform_main for name in model.vision_input_names}
 
     frame_delay = DT_MDL # compensate for time passed since the frame was captured: current_time - timestamp_eof is 50ms on average
@@ -475,6 +490,9 @@ def main(demo=False):
       model_output = None
     mt2 = time.perf_counter()
     model_execution_time = mt2 - mt1
+    if getattr(model, 'handovers', 0) != handovers:
+      run_count = 0
+      frame_drop_ratio = 0.
 
     if model_output is not None:
       modelv2_send = messaging.new_message('modelV2')
