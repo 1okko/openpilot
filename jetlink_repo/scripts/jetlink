@@ -1,0 +1,395 @@
+#!/usr/bin/env bash
+# The `jetlink` command install.sh puts on the PATH: check on the server, read
+# its log, update it, change the setup, or remove it, without knowing systemd.
+# Installed to /usr/local/bin/jetlink.
+set -euo pipefail
+
+ETC_DIR=/etc/jetlink
+CONF="$ETC_DIR/install.conf"
+ENV_FILE="$ETC_DIR/server.env"
+# the web page's password, which the server writes and reads
+AUTH_FILE="$ETC_DIR/web-auth.json"
+SERVER=/opt/jetlink/current/bin/jetlink-server
+UNIT=jetlink-server
+UNIT_FILE=/etc/systemd/system/$UNIT.service
+# the server does not suspend while anyone holds a shared lock on this; it
+# makes the file, readable by all, when it starts
+AWAKE_LOCK="${JETLINK_TEST_AWAKE_LOCK:-/run/jetlink-awake.lock}"
+INSTALLER_URL_BASE="https://raw.githubusercontent.com/zoompilot/jetlink"
+# the last release that ran the server in Docker
+DOCKER_LAST=v0.6.0
+
+if [ -t 1 ]; then
+  B=$'\e[1m' D=$'\e[2m' G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' N=$'\e[0m'
+else
+  B='' D='' G='' Y='' R='' N=''
+fi
+
+usage() {
+  cat <<EOF
+${B}jetlink${N}: manage the Jetlink server on this computer
+
+  ${B}jetlink status${N}      is it running, and is the comma connected
+  ${B}jetlink logs${N}        follow the server's log (Ctrl-C to stop)
+  ${B}jetlink restart${N}     restart the server
+  ${B}jetlink stop${N}        stop it until the next restart or ${B}jetlink start${N}
+  ${B}jetlink run${N} ...     run it in this terminal instead, with any flags added (for a bench)
+  ${B}jetlink update${N}      update Jetlink, keeping your settings (${B}--check${N} only names the newest)
+  ${B}jetlink setup${N}       answer the setup questions again
+  ${B}jetlink password${N}    set the web page's password (${B}--generate${N} makes one)
+  ${B}jetlink models${N} ...  list, download or prepare models (${B}jetlink models --help${N})
+  ${B}jetlink caffeinate${N}  keep it awake until Ctrl-C (or ${B}-t${N} SECONDS, or while COMMAND runs)
+  ${B}jetlink uninstall${N}   remove Jetlink from this computer
+
+Help and troubleshooting: https://github.com/zoompilot/jetlink
+EOF
+}
+
+load() {
+  if [ ! -r "$CONF" ] || [ ! -r "$ENV_FILE" ]; then
+    echo "${R}Jetlink is not installed here.${N} Install it with:"
+    echo "  curl -fsSL $INSTALLER_URL_BASE/main/install.sh | bash"
+    exit 1
+  fi
+  set -a
+  # shellcheck disable=SC1090
+  . "$CONF"
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+  set +a
+}
+
+as_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    exec sudo -- "$0" "$@"
+  fi
+}
+
+human_size() {
+  du -sh "$1" 2>/dev/null | cut -f1 || echo "?"
+}
+
+comma_state() {
+  # The newest line that says either way wins.
+  local line
+  line="$(journalctl -u "$UNIT" -b --no-pager -o cat 2>/dev/null \
+    | grep -E 'client connected over usb|client disconnected|waiting for a jetlink gadget|client connected from' \
+    | tail -1 || true)"
+  case "$line" in
+    *"client connected"*) echo "${G}connected${N}" ;;
+    *"waiting for a jetlink gadget"*|*"client disconnected"*) echo "not connected ${D}(waiting for it)${N}" ;;
+    *) echo "${D}unknown yet${N}" ;;
+  esac
+}
+
+# What runs, and what an update moves to: the newest release, or what --ref named.
+version_line() {
+  local version="${JETLINK_VERSION:-${JETLINK_REF:-unknown}}" built
+  # a build between releases, installed with --binary, keeps the release it
+  # came over from as its version; the build names itself
+  built="$("$SERVER" --version 2>/dev/null | head -n 1 || true)"
+  if [[ $built == *-dev* ]] && [[ $version =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "$built ${D}(a build between releases)${N}"
+  elif [ "$version" = local ]; then
+    echo "checkout at ${JETLINK_SOURCE_DIR:-?} ${D}(${JETLINK_COMMIT:-?})${N}"
+  elif [ "${JETLINK_REF:-}" = latest ]; then
+    echo "$version ${D}(follows releases)${N}"
+  else
+    echo "$version ${D}(${JETLINK_COMMIT:-?})${N}"
+  fi
+}
+
+# The binary's own version, and the TensorRT it loads: a PC's copy, whose
+# directory is named for its version, else JetPack's package.
+server_line() {
+  local version trt="${JETLINK_TENSORRT##*/}"
+  version="$("$SERVER" --version 2>/dev/null | head -n 1 || true)"
+  [ -n "$trt" ] || trt="$(dpkg-query -W -f '${Version}\n' libnvinfer10 2>/dev/null | head -n 1 || true)"
+  echo "${version:-missing from $SERVER}${trt:+ ${D}(TensorRT ${trt%%-*})${N}}"
+}
+
+# The web page, by name and by address: a phone often cannot resolve .local.
+page_lines() {
+  local port="${JETLINK_STATUS_PORT:-0}" ip how="sign in with the web page's password"
+  [ "$port" != 0 ] || return 0
+  [ -f "$AUTH_FILE" ] || how="status only until it has a password: jetlink password"
+  echo "  web page       http://$(hostname 2>/dev/null || uname -n).local:$port ${D}($how)${N}"
+  # Docker's and the Jetson's USB bridges are no use to a phone
+  for ip in $(ip -4 -o addr show scope global 2>/dev/null \
+      | awk '$2 !~ /^(docker|br-|veth|l4tbr|virbr)/ {sub(/\/.*/, "", $4); print $4}'); do
+    echo "                 http://$ip:$port"
+  done
+}
+
+cmd_status() {
+  load
+  local state since
+  state="$(systemctl is-active "$UNIT" 2>/dev/null || true)"
+  since="$(systemctl show -p ActiveEnterTimestamp --value "$UNIT" 2>/dev/null || true)"
+  echo
+  case "$state" in
+    active) echo "  ${G}●${N} ${B}Jetlink is running${N} ${D}since $since${N}" ;;
+    activating) echo "  ${Y}●${N} ${B}Jetlink is starting${N}" ;;
+    failed) echo "  ${R}●${N} ${B}Jetlink has stopped with an error${N} ${D}(see: jetlink logs)${N}" ;;
+    *) echo "  ${Y}●${N} ${B}Jetlink is not running${N} ${D}(start it with: jetlink start)${N}" ;;
+  esac
+  echo
+  if [ "$state" = active ]; then
+    echo "  comma          $(comma_state)"
+  fi
+  echo "  computer       ${JETLINK_PLATFORM_NAME:-unknown}"
+  echo "  version        $(version_line)"
+  echo "  server         $(server_line)"
+  echo "  models folder  $JETLINK_CACHE_DIR ${D}($(human_size "$JETLINK_CACHE_DIR"))${N}"
+  if [ "${JETLINK_JETSON:-0}" = 1 ]; then
+    local power="switched: loses power with the car"
+    if [ "${JETLINK_POWER:-}" = always ]; then
+      power="always on"
+      [ "${JETLINK_SLEEP_AFTER:-0}" != 0 ] && power="$power: sleeps while parked"
+      [ "${JETLINK_POWEROFF_WITH_COMMA:-0}" = 1 ] && power="$power; the comma can turn it off"
+    fi
+    echo "  power          $power"
+  fi
+  if [ -e "$AWAKE_LOCK" ] && ! flock --exclusive --nonblock "$AWAKE_LOCK" true 2>/dev/null; then
+    echo "  sleep          held awake by jetlink caffeinate"
+  fi
+  if [ "$state" = active ]; then page_lines; fi
+  echo "  starts at boot $(systemctl is-enabled "$UNIT" 2>/dev/null || echo no)"
+  echo
+  echo "  ${D}recent log:${N}"
+  journalctl -u "$UNIT" -n 6 --no-pager -o cat 2>/dev/null | sed "s/^/  ${D}│${N} /" || true
+  echo
+}
+
+cmd_logs() {
+  exec journalctl -u "$UNIT" -f -n 50 -o cat
+}
+
+cmd_models() {
+  load
+  if [ "${1:-}" = prepare ] && systemctl is-active --quiet "$UNIT"; then
+    echo "${Y}The server is running.${N} Two processes preparing into one folder is not"
+    echo "supported: run ${B}jetlink stop${N} first, and ${B}jetlink start${N} afterwards."
+    exit 1
+  fi
+  # --cache is each subcommand's option, so it follows the subcommand's name,
+  # and prepare builds with a PC's own TensorRT as the server does
+  local trt=()
+  [ "${1:-}" != prepare ] || read -ra trt <<<"${JETLINK_TENSORRT:-}"
+  case "${1:--}" in
+    -*) exec "$SERVER" models "$@" ;;
+    *) exec "$SERVER" models "$1" --cache "$JETLINK_CACHE_DIR" "${trt[@]}" "${@:2}" ;;
+  esac
+}
+
+# Like macOS's caffeinate: hold the server's awake lock until Ctrl-C, for -t
+# SECONDS, or while a command runs, then exit with its status. A shared lock
+# on a file opened read-only, so it needs no root, and a holder that dies lets
+# go. The waits run without the lock's descriptor, so nothing outlives this.
+cmd_caffeinate() {
+  if [ ! -e "$AWAKE_LOCK" ]; then
+    echo "The server is not running natively; nothing to hold."
+    exit 1
+  fi
+  [ "${1:-}" = -- ] && shift
+  local seconds='' rc=0
+  if [ "${1:-}" = -t ]; then
+    seconds="${2:-}"
+    [[ $seconds =~ ^[0-9]+$ ]] || { echo "Usage: jetlink caffeinate [-t SECONDS] [COMMAND [ARGS...]]"; exit 2; }
+    shift 2
+  fi
+  exec 9<"$AWAKE_LOCK"
+  flock --shared 9
+  if [ $# -gt 0 ]; then
+    "$@" 9<&- || rc=$?
+    exit "$rc"
+  fi
+  trap 'kill "$!" 2>/dev/null; exit 0' INT TERM
+  if [ -n "$seconds" ]; then
+    echo "Holding the Jetson awake for $seconds s; Ctrl-C to let it sleep."
+    sleep "$seconds" 9<&- &
+    wait "$!"
+  else
+    echo "Holding the Jetson awake; Ctrl-C to let it sleep."
+    while :; do
+      sleep 3600 9<&- &
+      wait "$!"
+    done
+  fi
+}
+
+# A new password for the web page. The server writes the file, since it knows
+# the format, and reads it again when it changes: a new password also means a
+# new key for the sign-ins, so every device signed in is signed out.
+cmd_password() {
+  load
+  if [ "${JETLINK_STATUS_PORT:-0}" = 0 ]; then
+    echo "The web page is off. To turn it on, give it a port in: jetlink setup"
+    exit 1
+  fi
+  local pw again
+  case "${1:-}" in
+    --generate)
+      pw="$("$SERVER" web-password --file "$AUTH_FILE" --generate)" || exit 1
+      echo "The web page's new password: ${B}$pw${N}" ;;
+    '')
+      # the server says what it takes, 8 to 128 characters, and why not;
+      # the password goes on stdin, where ps cannot see it
+      while :; do
+        read_secret pw "New password for the web page (8 to 128 characters): " || { echo "Nothing changed."; exit 1; }
+        read_secret again "Once more: " || { echo "Nothing changed."; exit 1; }
+        if [ "$pw" != "$again" ]; then
+          echo "The two did not match; please type it again."
+          continue
+        fi
+        printf '%s\n' "$pw" | "$SERVER" web-password --file "$AUTH_FILE" && break
+      done
+      echo "The web page has a new password." ;;
+    *) echo "Usage: jetlink password [--generate]"; exit 2 ;;
+  esac
+  echo "Devices signed in to it are signed out, and sign in again with the new one."
+}
+
+# read_secret VAR PROMPT: a line from the terminal without echo
+read_secret() {
+  IFS= read -rs -p "$2" "$1" || return 1
+  # the Enter typed does not show either
+  [ ! -t 0 ] || echo >&2
+}
+
+# The newest release's tag, or nothing, found as install.sh's latest_release
+# finds it: GitHub's latest release, else the highest vX.Y.Z tag.
+latest_release() {
+  local json re='"tag_name"[[:space:]]*:[[:space:]]*"(v[0-9]+\.[0-9]+\.[0-9]+)"'
+  json="$(curl -fsSL --max-time 20 https://api.github.com/repos/zoompilot/jetlink/releases/latest 2>/dev/null || true)"
+  if [[ $json =~ $re ]]; then
+    echo "${BASH_REMATCH[1]}"
+    return 0
+  fi
+  { git -C "$1" ls-remote --tags --refs origin 'v*' 2>/dev/null || true; } \
+    | sed -n 's#.*refs/tags/\(v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$#\1#p' \
+    | sort -t. -k1.2,1n -k2,2n -k3,3n | tail -n 1
+}
+
+# a >= b, for version numbers
+version_ge() {
+  [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n 1)" = "$1" ]
+}
+
+# Whether ARGS has the option, as --opt VALUE or --opt=VALUE.
+has_option() {
+  local opt=$1 arg
+  shift
+  for arg in "$@"; do
+    case "$arg" in "$opt"|"$opt"=*) return 0 ;; esac
+  done
+  return 1
+}
+
+# An update of a native install goes neither back to Docker nor to a release
+# older than the server it has by itself: until a release runs natively, the
+# newest one is a Docker one. Only --ref goes there.
+stay_native() {
+  local ref=$1 have="${JETLINK_SERVER_VERSION:-}"
+  [ -L /opt/jetlink/current ] && ! grep -qs docker "$UNIT_FILE" || return 0
+  [[ $ref =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 0
+  if version_ge "${DOCKER_LAST#v}" "${ref#v}"; then
+    echo "Jetlink here runs natively${have:+ (server $have)}; $ref, the release this install follows,"
+    echo "runs the server in Docker. Nothing changed."
+    echo "To go back to $ref and Docker:"
+    echo "  curl -fsSL $INSTALLER_URL_BASE/$ref/install.sh | bash -s -- --update --ref $ref"
+    exit 0
+  fi
+  if [ -n "$have" ] && ! version_ge "${ref#v}" "${have%%-*}"; then
+    echo "$ref, the release this install follows, is older than the server here ($have). Nothing changed."
+    echo "To install it anyway: jetlink update --ref $ref"
+    exit 0
+  fi
+}
+
+# update, setup and uninstall are the installer's: it is the one place that
+# knows what it changed on this computer. An update runs the installer of the
+# version it moves to; one with --binary keeps the source it has, as the
+# installer does.
+run_installer() {
+  load
+  local src="${JETLINK_SOURCE_DIR:-}" ref="${JETLINK_REF:-main}"
+  if [ "${JETLINK_SOURCE:-git}" = git ] && [ -d "$src/.git" ]; then
+    if [ "$1" = --update ] && ! has_option --binary "$@"; then
+      # with no answer the installer looks again, and says what it found
+      if [ "$ref" = latest ]; then ref="$(latest_release "$src")"; fi
+      has_option --ref "$@" || stay_native "$ref"
+      if [ -n "$ref" ]; then
+        echo "Getting the newest Jetlink ($ref)..."
+        git -C "$src" fetch --depth 1 origin "$ref" >/dev/null 2>&1 \
+          && git -C "$src" reset --hard FETCH_HEAD >/dev/null
+      fi
+    fi
+    exec bash "$src/install.sh" "$@"
+  fi
+  if [ -f "$src/install.sh" ]; then
+    if [ "$1" = --update ]; then
+      echo "Jetlink was installed from your checkout at $src."
+      echo "Update it there (git pull), then run: sudo $src/install.sh --update"
+      exit 0
+    fi
+    exec bash "$src/install.sh" "$@"
+  fi
+  # The source copy is gone: fetch the installer again. main's installs the
+  # newest release.
+  if [ "$ref" = latest ]; then ref=main; fi
+  curl -fsSL "$INSTALLER_URL_BASE/$ref/install.sh" | bash -s -- "$@"
+}
+
+main() {
+  local cmd="${1:-help}"
+  [ $# -gt 0 ] && shift
+  case "$cmd" in
+    help|-h|--help) usage ;;
+    status) as_root status "$@"; cmd_status ;;
+    logs|log) as_root logs "$@"; cmd_logs ;;
+    restart|start|stop)
+      as_root "$cmd" "$@"
+      load
+      systemctl "$cmd" "$UNIT"
+      echo "Jetlink: $cmd done."
+      ;;
+    run)
+      # the server in this terminal, for a bench: the unit's command line with
+      # server.env's settings, then the flags given here; the service stops first
+      as_root run "$@"
+      load
+      if systemctl is-active --quiet "$UNIT"; then
+        echo "Stopping the background server while this one runs..."
+        systemctl stop "$UNIT"
+      fi
+      # on a Jetson, what jetlink-clocks.service does at boot
+      if [ "${JETLINK_JETSON:-0}" = 1 ] && command -v jetson_clocks >/dev/null 2>&1; then
+        jetson_clocks || true
+      fi
+      # as systemd expands it: an unset variable is empty
+      set +u
+      eval "exec $(sed -n 's/^ExecStart=//p' "$UNIT_FILE") \"\$@\""
+      ;;
+    models|model) as_root models "$@"; cmd_models "$@" ;;
+    caffeinate) cmd_caffeinate "$@" ;;
+    update|upgrade)
+      # the newest release's tag alone, as an update would find it: the web
+      # page's "Check for updates"
+      if [ "${1:-}" = --check ]; then
+        load
+        local tag
+        tag="$(latest_release "${JETLINK_SOURCE_DIR:-}")"
+        [ -n "$tag" ] || { echo "Could not look up the newest release." >&2; exit 1; }
+        echo "$tag"
+        exit 0
+      fi
+      as_root update "$@"; run_installer --update "$@" ;;
+    setup|configure|reconfigure) as_root setup "$@"; run_installer --reconfigure "$@" ;;
+    password|passwd) as_root password "$@"; cmd_password "$@" ;;
+    uninstall|remove) as_root uninstall "$@"; run_installer --uninstall "$@" ;;
+    *) echo "Unknown command: $cmd"; echo; usage; exit 2 ;;
+  esac
+}
+
+main "$@"

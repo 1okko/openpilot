@@ -1,0 +1,45 @@
+# systemd unit for the Jetlink server. It ships in the server's tarball
+# (share/jetlink/systemd), so the flags below always match the binary beside
+# it. install.sh installs it with /etc/jetlink/server.env, which holds the
+# settings below, and the server in /opt/jetlink/current, a link to the
+# version's directory, so an update or a rollback is one rename. The installer
+# also adds drop-ins: one that waits for the cache's mount, and on a Jetson one
+# that waits for the GPU's driver.
+#
+# By hand, with a release tarball unpacked to /opt/jetlink/<version>:
+#   sudo ln -sfn /opt/jetlink/<version> /opt/jetlink/current
+#   sudo mkdir -p /etc/jetlink && echo JETLINK_CACHE_DIR=/var/lib/jetlink | sudo tee /etc/jetlink/server.env
+#   sudo install -m 644 share/jetlink/systemd/jetlink-server.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now jetlink-server
+# The server needs libcurl4 (sudo apt install libcurl4) and TensorRT: JetPack's
+# on a Jetson; on a PC, its own copy, named in server.env with
+# JETLINK_TENSORRT="--tensorrt-libs /path/to/tensorrt/libs".
+#
+# It runs as root: it is the USB host for the comma's gadget, writes
+# /sys/power to sleep, arms the hubs for remote wakeup and powers off.
+[Unit]
+Description=Jetlink inference server
+# in the car nobody is there to start it again
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# the server's own defaults; the cache has none here, since the server's
+# depends on the machine
+Environment=JETLINK_SLEEP_AFTER=0 JETLINK_STATUS_PORT=0
+EnvironmentFile=/etc/jetlink/server.env
+# TensorRT or nothing: a server that cannot load it exits, so the failure shows
+# in the journal and in `jetlink status` instead of the car being served from
+# the CPU. Two settings are flags or nothing: JETLINK_POWEROFF is --poweroff
+# on a Jetson whose user lets the comma power it off, and JETLINK_TENSORRT is
+# --tensorrt-libs DIR on a PC, whose TensorRT is its own copy (a Jetson's is
+# JetPack's, on the loader path). The web page on the status port asks for
+# the password in --web-auth's file, which `jetlink password` changes; without
+# the file the page shows the status only. `jetlink run` runs this line through
+# bash, so it has no systemd prefixes or specifiers.
+ExecStart=/opt/jetlink/current/bin/jetlink-server --usb --backend trt --cache ${JETLINK_CACHE_DIR} --sleep-after ${JETLINK_SLEEP_AFTER} --status-port ${JETLINK_STATUS_PORT} --web-auth /etc/jetlink/web-auth.json $JETLINK_POWEROFF $JETLINK_TENSORRT
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
