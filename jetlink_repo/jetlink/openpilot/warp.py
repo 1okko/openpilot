@@ -134,6 +134,17 @@ class Warps:
     return warp
 
 
+def _as_memoryview(buf, **kwargs):
+  """A buffer's memoryview, with the copy-avoiding flags this tinygrad knows.
+
+  zoompilot's tinygrad takes force_zero_copy/no_sync; this fork's predates
+  them and raises TypeError. Without the flags it copies, which is slower but
+  correct, and the link still proves it keeps up before it drives."""
+  try:
+    return buf.as_memoryview(**kwargs)
+  except TypeError:
+    return buf.as_memoryview()
+
 class Warp:
   """The built warp as modeld's frame loop runs it: start() with two camera
   buffers and their transforms, wait(), and `output` holds the warped frame,
@@ -191,7 +202,7 @@ class Warp:
       call_warp(jit, tfm, big_tfm, blobs[0], blobs[1])
     self.wait = Device[self._device].synchronize
     self.wait()
-    self.output = out.as_memoryview(force_zero_copy=True, no_sync=True)
+    self.output = _as_memoryview(out, force_zero_copy=True, no_sync=True)
     self._replay = jit.captured
     if self._device.startswith('QCOM'):
       inputs = (blobs[1].uop.base, self._big_tfm_buf, blobs[0].uop.base, self._tfm_buf)
@@ -231,7 +242,7 @@ def _graph_alone(captured, inputs):
   for step in copies:
     dest, src = resolve_params(step, inputs)
     name = WARP_INPUT_NAMES[next(i for i, u in enumerate(inputs) if u is src)]
-    views[name] = np.frombuffer(dest.buffer.as_memoryview(force_zero_copy=True), dtype=np.float32).reshape(3, 3)
+    views[name] = np.frombuffer(_as_memoryview(dest.buffer, force_zero_copy=True), dtype=np.float32).reshape(3, 3)
   return get_graph_runtime(graphs[0], inputs), views['tfm'], views['big_tfm']
 
 
