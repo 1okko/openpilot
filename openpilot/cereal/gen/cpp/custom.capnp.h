@@ -241,6 +241,16 @@ CAPNP_DECLARE_SCHEMA(9e62278160b7df26);
 CAPNP_DECLARE_SCHEMA(b86e6369214c01c8);
 CAPNP_DECLARE_SCHEMA(f416ec09499d9d19);
 CAPNP_DECLARE_SCHEMA(a1680744031fdb2d);
+CAPNP_DECLARE_SCHEMA(a1deb3487d087a3e);
+enum class AcceleratorState_a1deb3487d087a3e: uint16_t {
+  NONE,
+  JOINING,
+  RUNNING,
+  RETRYING,
+  UNAVAILABLE,
+  READY,
+};
+CAPNP_DECLARE_ENUM(AcceleratorState, a1deb3487d087a3e);
 CAPNP_DECLARE_SCHEMA(b73df234a23b0cc2);
 enum class TurnDirection_b73df234a23b0cc2: uint16_t {
   NONE,
@@ -834,11 +844,13 @@ struct ModelDataV2SP {
   class Reader;
   class Builder;
   class Pipeline;
+  typedef ::capnp::schemas::AcceleratorState_a1deb3487d087a3e AcceleratorState;
+
   typedef ::capnp::schemas::TurnDirection_b73df234a23b0cc2 TurnDirection;
 
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(a1680744031fdb2d, 1, 0)
+    CAPNP_DECLARE_STRUCT_HEADER(a1680744031fdb2d, 1, 1)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
@@ -4564,6 +4576,13 @@ public:
 
   inline bool getRightLaneChangeEdgeBlock() const;
 
+  inline bool getBigModelAvailableDEPRECATED() const;
+
+  inline  ::cereal::ModelDataV2SP::AcceleratorState getAcceleratorState() const;
+
+  inline bool hasAcceleratorNameDEPRECATED() const;
+  inline  ::capnp::Text::Reader getAcceleratorNameDEPRECATED() const;
+
 private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -4600,6 +4619,19 @@ public:
 
   inline bool getRightLaneChangeEdgeBlock();
   inline void setRightLaneChangeEdgeBlock(bool value);
+
+  inline bool getBigModelAvailableDEPRECATED();
+  inline void setBigModelAvailableDEPRECATED(bool value);
+
+  inline  ::cereal::ModelDataV2SP::AcceleratorState getAcceleratorState();
+  inline void setAcceleratorState( ::cereal::ModelDataV2SP::AcceleratorState value);
+
+  inline bool hasAcceleratorNameDEPRECATED();
+  inline  ::capnp::Text::Builder getAcceleratorNameDEPRECATED();
+  inline void setAcceleratorNameDEPRECATED( ::capnp::Text::Reader value);
+  inline  ::capnp::Text::Builder initAcceleratorNameDEPRECATED(unsigned int size);
+  inline void adoptAcceleratorNameDEPRECATED(::capnp::Orphan< ::capnp::Text>&& value);
+  inline ::capnp::Orphan< ::capnp::Text> disownAcceleratorNameDEPRECATED();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -8951,6 +8983,68 @@ inline bool ModelDataV2SP::Builder::getRightLaneChangeEdgeBlock() {
 inline void ModelDataV2SP::Builder::setRightLaneChangeEdgeBlock(bool value) {
   _builder.setDataField<bool>(
       ::capnp::bounded<17>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool ModelDataV2SP::Reader::getBigModelAvailableDEPRECATED() const {
+  return _reader.getDataField<bool>(
+      ::capnp::bounded<18>() * ::capnp::ELEMENTS);
+}
+
+inline bool ModelDataV2SP::Builder::getBigModelAvailableDEPRECATED() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<18>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::Builder::setBigModelAvailableDEPRECATED(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<18>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::cereal::ModelDataV2SP::AcceleratorState ModelDataV2SP::Reader::getAcceleratorState() const {
+  return _reader.getDataField< ::cereal::ModelDataV2SP::AcceleratorState>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline  ::cereal::ModelDataV2SP::AcceleratorState ModelDataV2SP::Builder::getAcceleratorState() {
+  return _builder.getDataField< ::cereal::ModelDataV2SP::AcceleratorState>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void ModelDataV2SP::Builder::setAcceleratorState( ::cereal::ModelDataV2SP::AcceleratorState value) {
+  _builder.setDataField< ::cereal::ModelDataV2SP::AcceleratorState>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool ModelDataV2SP::Reader::hasAcceleratorNameDEPRECATED() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool ModelDataV2SP::Builder::hasAcceleratorNameDEPRECATED() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::capnp::Text::Reader ModelDataV2SP::Reader::getAcceleratorNameDEPRECATED() const {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::capnp::Text::Builder ModelDataV2SP::Builder::getAcceleratorNameDEPRECATED() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void ModelDataV2SP::Builder::setAcceleratorNameDEPRECATED( ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::capnp::Text::Builder ModelDataV2SP::Builder::initAcceleratorNameDEPRECATED(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
+}
+inline void ModelDataV2SP::Builder::adoptAcceleratorNameDEPRECATED(
+    ::capnp::Orphan< ::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::capnp::Text> ModelDataV2SP::Builder::disownAcceleratorNameDEPRECATED() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
 }  // namespace
