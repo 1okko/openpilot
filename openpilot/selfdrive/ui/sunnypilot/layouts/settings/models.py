@@ -12,6 +12,8 @@ from openpilot.cereal import custom
 from openpilot.sunnypilot.models.helpers import ACTIVE_BUNDLE_KEYS, get_selected_bundle, resolve_bundle_by_ref
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.ui_state import device, ui_state
+from openpilot.selfdrive.ui.sunnypilot.accelerator_link import LINK_MODES, LINK_MODE_TITLES, LINK_PARAM, link_mode, \
+  link_status, link_toggle_meaningful
 from openpilot.selfdrive.ui.sunnypilot.model_info import (big_model_state, bundles_for_source, carrying_model, default_model_name,
                                                            model_cache_size_mb, queued_name, refresh_in_progress, refresh_model_list)
 from openpilot.system.ui.lib.multilang import tr
@@ -23,7 +25,7 @@ from openpilot.system.ui.widgets.toggle import ON_COLOR
 
 from openpilot.system.ui.sunnypilot.lib.styles import style
 from openpilot.system.ui.sunnypilot.lib.utils import NoElideButtonAction, ScrollingButtonAction
-from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, toggle_item_sp, option_item_sp
+from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, toggle_item_sp, option_item_sp, multiple_button_item_sp
 from openpilot.system.ui.sunnypilot.widgets.download_status import download_status_item
 from openpilot.system.ui.sunnypilot.widgets.tree_dialog import TreeOptionDialog, TreeNode, TreeFolder
 
@@ -43,6 +45,7 @@ class ModelsLayout(Widget):
     self._refreshing = False
     self._refresh_start: float | None = None
     self._last_note = None
+    self._link_status = None
     self.last_cache_calc_time = 0
 
     self._initialize_items()
@@ -80,6 +83,14 @@ class ModelsLayout(Widget):
       callback=self._clear_cache
     )
 
+    # param-bound; disabled onroad in _refresh_accelerator_items, since the
+    # gadget changes only once the car is parked
+    self.accelerator_link_item = multiple_button_item_sp(
+      tr("Jetlink"),
+      self._link_description(""),
+      buttons=[lambda m=m: tr(LINK_MODE_TITLES[m]) for m in LINK_MODES],
+      param=LINK_PARAM, button_width=300, inline=False)
+
     self.cancel_download_item = button_item(lambda: tr("Cancel Verification") if self._verifying else tr("Cancel Download"),
                                             tr("Cancel"), "",
                                             lambda: ui_state.params.remove("ModelManager_DownloadRef"))
@@ -107,9 +118,24 @@ class ModelsLayout(Widget):
                                         1, None, True, "", style.BUTTON_ACTION_WIDTH, None, True,
                                         lambda v: f"{v / 100:.2f} m")
 
-    self.items = [self.small_model_item, self.big_model_item, self.cancel_download_item, self.download_item, self.refresh_item, self.clear_cache_item,
+    self.items = [self.small_model_item, self.big_model_item, self.accelerator_link_item, self.cancel_download_item, self.download_item, self.refresh_item, self.clear_cache_item,
                   self.lane_turn_value_control, self.delay_control, self.camera_offset]
+    self._refresh_accelerator_items()
 
+  @staticmethod
+  def _link_description(status: str) -> str:
+    what = tr("Run big models over a connected device running Jetlink. Turns off ADB.")
+    return f"{what} {status}".strip()
+
+  def _refresh_accelerator_items(self):
+    # the setting is a param read, so this rides the half-second tick
+    self.accelerator_link_item.set_visible(link_toggle_meaningful())
+    self.accelerator_link_item.action_item.set_selected_button(LINK_MODES.index(link_mode()))
+    self.accelerator_link_item.action_item.set_enabled(ui_state.is_offroad())
+    status = link_status()
+    if status != self._link_status:
+      self._link_status = status
+      self.accelerator_link_item.set_description(self._link_description(status))
   def _update_lagd_description(self, lagd_toggle: bool):
     desc = tr("Enable this for the car to learn and adapt its steering response time. Disable to use a fixed steering response time. " +
               "Keeping this on provides the stock openpilot experience.")
@@ -150,6 +176,7 @@ class ModelsLayout(Widget):
     elif (current_time := time.monotonic()) - self.last_cache_calc_time > 0.5:
       self.last_cache_calc_time = current_time
       self.clear_cache_item.action_item.set_value(f"{self.calculate_cache_size():.2f} MB")
+      self._refresh_accelerator_items()
 
     bundle = self.model_manager.selectedBundle if self.model_manager else None
     progresses = [model.artifact.downloadProgress for model in bundle.models if model.artifact.fileName] if bundle else []
