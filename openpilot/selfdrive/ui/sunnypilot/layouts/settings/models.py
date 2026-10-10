@@ -14,8 +14,8 @@ from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.ui_state import device, ui_state
 from openpilot.selfdrive.ui.sunnypilot.accelerator_link import LINK_MODES, LINK_MODE_TITLES, LINK_PARAM, link_mode, \
   link_status, link_toggle_meaningful
-from openpilot.selfdrive.ui.sunnypilot.model_info import (big_model_state, bundles_for_source, carrying_model, default_model_name,
-                                                           model_cache_size_mb, queued_name, refresh_in_progress, refresh_model_list)
+from openpilot.selfdrive.ui.sunnypilot.model_info import (big_model_note, big_model_state, bundles_for_source, carrying_model, default_model_name,
+                                                           model_cache_size_mb, queued_name, refresh_in_progress, refresh_model_list, standin_model)
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.widgets import DialogResult, Widget
@@ -232,16 +232,28 @@ class ModelsLayout(Widget):
       item.set_description("")
 
   def _status_note(self) -> str:
-    """The failover story for the Model Status row. One-way big -> small, and the
-    fallback is runner-matched: a Default big can only fall back to the Default
-    small (stock modeld), a custom big has no automatic fallback yet."""
-    if not ui_state.chestnut_present:
+    """The failover story for the Model Status row. A chestnut's is one-way big ->
+    small and runner-matched: a Default big can only fall back to the Default
+    small (stock modeld), a custom big has no automatic fallback yet.
+    Jetlink's goes both ways, all drive."""
+    view = ui_state.jetlink_view
+    accelerator = view is not None
+    if not (ui_state.chestnut_present or accelerator):
       return ""
-    big_bundle = get_selected_bundle(ui_state.params, "chestnut")
-    big_name = big_bundle.internalName if big_bundle else default_model_name("chestnut")
-    big_is_default = big_bundle is None
     fallback_name = default_model_name("qcom")
     state = big_model_state()
+    if accelerator:
+      # named by jetlink: the slot's pick, or its default, which can be
+      # newer than the chestnut's. The small model the user picked drives in
+      # its place, so it reads like a Default big
+      big_name = view.model or tr("The big model")
+      big_is_default = True
+      if small := get_selected_bundle(ui_state.params, "qcom"):
+        fallback_name = small.internalName
+    else:
+      big_bundle = get_selected_bundle(ui_state.params, "chestnut")
+      big_name = big_bundle.internalName if big_bundle else default_model_name("chestnut")
+      big_is_default = big_bundle is None
     if state == 'failed':
       if big_is_default:
         return tr("Big model unavailable, {} is driving until the next drive.").format(fallback_name)
@@ -250,10 +262,22 @@ class ModelsLayout(Widget):
       if big_is_default:
         return tr("{} drives until the big model is ready.").format(fallback_name)
       return tr("Getting the big model ready.")
+    if state == 'ready':
+      # the swap window, not the model, is what is missing now: it opens when
+      # nothing is in control
+      return tr("{} is ready. Disengage fully, then re-engage to switch.").format(big_name)
+    if accelerator and not view.ready:
+      if standin := standin_model():
+        # the last model the Jetson built drives until the pick is downloaded and built
+        return tr("{} drives until {} is ready.").format(standin, big_name)
+      return tr("{} will drive when Jetlink is ready.").format(big_name)
+    if accelerator:
+      # it rejoins all drive and a drop is announced as it happens, so there is
+      # no "until the next drive" to warn of
+      return tr("{} will drive.").format(big_name)
     if big_is_default:
       return tr("{} will drive. If it fails during a drive, {} takes over until the next drive.").format(big_name, fallback_name)
     return tr("{} will drive when the chestnut is ready.").format(big_name)
-
   @staticmethod
   def _download_row_state(progresses, name: str) -> dict:
     """Maps a bundle's artifact progress to DownloadStatusAction.update kwargs."""
@@ -293,10 +317,13 @@ class ModelsLayout(Widget):
     return resolved[0] if resolved else None
 
   @staticmethod
-  def _bundle_to_node(bundle):
-    return TreeNode(bundle.ref, {'display_name': bundle.displayName, 'short_name': bundle.internalName})
+  def _bundle_to_node(bundle, noted: bool = False):
+    # a big model's line says whether the Jetson has built it or the comma has it
+    note = big_model_note(bundle.ref) if noted else None
+    name = f"{bundle.displayName} · {note}" if note else bundle.displayName
+    return TreeNode(bundle.ref, {'display_name': name, 'short_name': bundle.internalName})
 
-  def _get_folders(self, favorites, bundles):
+  def _get_folders(self, favorites, bundles, noted: bool = False):
     folders = {}
     for bundle in bundles:
       folders.setdefault(next((ov_ride.value for ov_ride in bundle.overrides if ov_ride.key == "folder"), ""), []).append(bundle)
@@ -305,10 +332,10 @@ class ModelsLayout(Widget):
     for folder, folder_bundles in sorted(folders.items(), key=lambda x: max((bundle.index for bundle in x[1]), default=-1), reverse=True):
       folder_bundles.sort(key=lambda bundle: bundle.index, reverse=True)
       name = folder + (f" - (Updated: {m.group(1)})" if folder_bundles and (m := re.search(r'\(([^)]*)\)[^(]*$', folder_bundles[0].displayName)) else "")
-      folders_list.append(TreeFolder(name, [self._bundle_to_node(bundle) for bundle in folder_bundles]))
+      folders_list.append(TreeFolder(name, [self._bundle_to_node(bundle, noted) for bundle in folder_bundles]))
 
     if favorites and (fav_bundles := [bundle for bundle in bundles if bundle.ref in favorites]):
-      folders_list.insert(0, TreeFolder("Favorites", [self._bundle_to_node(bundle) for bundle in fav_bundles]))
+      folders_list.insert(0, TreeFolder("Favorites", [self._bundle_to_node(bundle, noted) for bundle in fav_bundles]))
     return folders_list
 
   def _open_source_dialog(self, source):
@@ -334,7 +361,7 @@ class ModelsLayout(Widget):
     default_ref = DEFAULT_BIG_MODEL_REF if source == "chestnut" else DEFAULT_MODEL_REF
     if not any(bundle.ref == default_ref for bundle in bundles):
       folders_list.append(TreeFolder("", [TreeNode("Default", {'display_name': default_model_name(source)})]))
-    folders_list.extend(self._get_folders(favorites, bundles))
+    folders_list.extend(self._get_folders(favorites, bundles, noted=source == "chestnut"))
     return folders_list
 
   @staticmethod

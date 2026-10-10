@@ -51,6 +51,7 @@ class UIStateSP:
     self.jetlink = None
     # Jetlink holds the USB port, so ADB is off and its toggle greyed out
     self.adb_blocked: bool = False
+    self._accelerator_state_name: str = 'none'
     self.blindspot: bool = False
     self.chevron_metrics = None
     self.custom_interactive_timeout: int = 0
@@ -76,6 +77,8 @@ class UIStateSP:
       self.sunnylink_state.start()
     else:
       self.sunnylink_state.stop()
+    # read where sm is updated, so the params thread never touches a message
+    self._accelerator_state_name = str(self.sm['modelDataV2SP'].acceleratorState)
 
   def onroad_brightness_handle_alerts(self, _ui_state, alert):
     if _ui_state.sm.recv_frame["carState"] < _ui_state.started_frame:
@@ -205,6 +208,20 @@ class UIStateSP:
     self.adb_blocked = self.jetlink is not None and self.jetlink.enabled
     if self.adb_blocked and self.params.get_bool("AdbEnabled"):
       self.params.put_bool("AdbEnabled", False, block=True)
+  @property
+  def jetlink_view(self):
+    """jetlink's snapshot when the chestnut icon is the link's: no chestnut
+    fitted, and something to show. Presence comes from jetlink: the comma is
+    the gadget and enumerates nothing."""
+    s = self.jetlink
+    return s if s is not None and (s.enabled or s.present or s.progress is not None) else None
+
+  def _jetlink_state(self, view):
+    """ChestnutState for the link: progress and the records offroad, modelV2 and acceleratorState onroad"""
+    from openpilot.selfdrive.ui.ui_state import ChestnutState  # defined by the class that mixes this in
+    model_seen = self.sm.recv_frame["modelV2"] > self.started_frame
+    running_big = self.sm.alive["modelV2"] and self.sm["modelV2"].big
+    return ChestnutState(view.icon(self.started, model_seen, running_big, self._accelerator_state_name))
   def _enforce_constraints(self) -> None:
     has_long = self.has_longitudinal_control
     CP = self.CP
