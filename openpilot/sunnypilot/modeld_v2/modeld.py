@@ -469,8 +469,9 @@ def main(demo=False):
     if 'lateral_control_params' in model.numpy_inputs:
       inputs['lateral_control_params'] = np.array([v_ego, lat_delay], dtype=np.float32)
 
-    if 'action_t' in model.numpy_inputs:
-      inputs['action_t'] = np.array([lat_action_t, long_action_t], dtype=np.float32)
+    # unconditional: a joining model's numpy_inputs describe whichever model
+    # is active now, and the swap frame needs action_t before it flips
+    inputs['action_t'] = np.array([lat_action_t, long_action_t], dtype=np.float32)
 
     mt1 = time.perf_counter()
     try:
