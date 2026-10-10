@@ -264,7 +264,12 @@ def prepare_reset(model):
   """
   from tinygrad import Tensor, TinyJit
 
-  queues = tuple(q for q in model.input_queues.values() if q.device != 'NPY')
+  # this fork's modeld_v2 keeps its queues on a model adapter, not on the
+  # ModelState itself; accept both, and the stock modeld's own attribute
+  queues_src = getattr(model, 'input_queues', None)
+  if queues_src is None:
+    queues_src = getattr(getattr(model, 'adapter', None), 'input_queues', {})
+  queues = tuple(q for q in queues_src.values() if q.device != 'NPY')
   npy = model.numpy_inputs if hasattr(model, 'numpy_inputs') else model.npy
 
   @TinyJit
