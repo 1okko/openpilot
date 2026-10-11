@@ -43,6 +43,10 @@ SLOW_FRAME = 0.05  # the full 20 Hz budget, not just the largest outliers
 # delay both dwarf, where a dropped frame is the same stale plan plus a count
 # toward selfdrived's modeldLagging. None waits the client's deadline, as before
 HOLD_FRAME = 0.046
+# TCP over Wi-Fi has an extra network round trip on top of the host's
+# inference. Keep the wait inside one 20 Hz frame (50 ms), while USB
+# keeps the original 46 ms so a slow cable host is still visible.
+WIFI_HOLD_FRAME = 0.050
 # Held frames the large model may make before it is behind rather than
 # tailing: this many in a row, or more than HOLDS_ALLOWED within HOLD_WINDOW.
 # A host at 40 ms a frame with a tail past 46 (an iPhone) holds a few frames
@@ -322,13 +326,14 @@ class JetlinkModelState:
 
   @property
   def _can_hold(self) -> bool:
-    """Is there an output to publish again instead of waiting (HOLD_FRAME)?"""
-    return bool(HOLD_FRAME) and self.client.last_output is not None
+    """Is there an output to publish again instead of waiting?"""
+    limit = WIFI_HOLD_FRAME if self._wifi else HOLD_FRAME
+    return bool(limit) and self.client.last_output is not None
 
-  @staticmethod
-  def _hold_left(frame) -> float:
+  def _hold_left(self, frame) -> float:
     """What is left of the hold for `frame`, from its warp's start."""
-    return HOLD_FRAME - (time.perf_counter() - frame.t0)
+    limit = WIFI_HOLD_FRAME if self._wifi else HOLD_FRAME
+    return limit - (time.perf_counter() - frame.t0)
 
   def _note_hold(self, held: bool) -> str | None:
     """Why the large model should hand back after this frame, if it should:
