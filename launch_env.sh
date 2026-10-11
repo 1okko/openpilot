@@ -21,6 +21,12 @@ fi
 
 export STAGING_ROOT="/data/safe_staging"
 
+# AGNOS exposes the system D-Bus socket at /run/dbus; jeepney may otherwise
+# look for the legacy /var/run path and the UI Wi-Fi scanner stays empty.
+if [ -S /run/dbus/system_bus_socket ]; then
+  export DBUS_SYSTEM_BUS_ADDRESS="unix:path=/run/dbus/system_bus_socket"
+fi
+
 # Comma4-UI-Streamer (MJPEG UI stream) - set STREAM=0 to disable
 export STREAM=1
 export STREAM_PORT=8082
