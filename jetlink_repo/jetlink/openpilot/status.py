@@ -150,6 +150,8 @@ def link_transport(mode: str | None = None, live: dict | None = None) -> str:
       # took the dial itself noted it in the link record
       peer = gadget.link_state()[1]
     if kind == 'cable':
+      if mode == 'tcp':
+        return f"TCP over Wi-Fi ({peer})" if peer else "TCP over Wi-Fi"
       return f"iOS over USB ({peer})" if peer else "iOS over USB"
   except Exception:
     pass

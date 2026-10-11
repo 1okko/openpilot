@@ -105,7 +105,7 @@ def link_kind(mode: str | None = None) -> str:
   the caller read it, stands in only until the owner has said: it may have
   moved and be waiting for the car to park. Without either, 'usb'."""
   kind, _ = link_state()
-  return kind or ('cable' if mode == 'ios' else 'usb')
+  return kind or ('cable' if mode in ('ios', 'tcp') else 'usb')
 
 
 def link_peer() -> str | None:

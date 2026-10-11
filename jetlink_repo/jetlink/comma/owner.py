@@ -635,7 +635,7 @@ class Owner:
         self.tuned = None
       self.port.off()
       return
-    self.link_step(mode == 'ios')
+    self.link_step(mode in ('ios', 'tcp'))
     if self.tuned != mode:
       # jetlink-root.sh vm: the recording VM tuning the gadget's reads need;
       # udc: the USB device side kept on for a host that powers the port

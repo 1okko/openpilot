@@ -89,7 +89,7 @@ class ModelsLayout(Widget):
       tr("Jetlink"),
       self._link_description(""),
       buttons=[lambda m=m: tr(LINK_MODE_TITLES[m]) for m in LINK_MODES],
-      param=LINK_PARAM, button_width=300, inline=False)
+      param=LINK_PARAM, button_width=220, inline=False)
 
     self.cancel_download_item = button_item(lambda: tr("Cancel Verification") if self._verifying else tr("Cancel Download"),
                                             tr("Cancel"), "",

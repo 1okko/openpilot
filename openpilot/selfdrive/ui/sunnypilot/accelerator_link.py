@@ -5,8 +5,8 @@ This file is part of zoompilot and is licensed under the MIT License.
 See the LICENSE.md file in the root directory for more details.
 
 The user's say over the Jetlink setting, shared by the mici and tici models panels:
-Off, USB (a Jetson, a Linux PC or a Mac) or iOS (an iPhone), stored as an
-index into the adapter's MODES. The small model is picked as ever: manager
+Off, USB (a Jetson, a Linux PC or a Mac), iOS (an iPhone) or TCP (an
+Android phone or another network peer), stored as an index into the adapter's MODES. The small model is picked as ever: manager
 runs whichever modeld that bundle needs and the link joins it, so the setting
 never changes which modeld runs. Everything else here reads ui_state.jetlink,
 the snapshot the params pass takes.
@@ -17,7 +17,7 @@ from openpilot.system.ui.lib.multilang import tr
 
 LINK_MODES = MODES
 LINK_PARAM = KEYS.link
-LINK_MODE_TITLES = {"off": "Off", "usb": "USB", "ios": "iOS"}
+LINK_MODE_TITLES = {"off": "Off", "usb": "USB", "ios": "iOS", "tcp": "TCP"}
 
 
 def link_mode() -> str:

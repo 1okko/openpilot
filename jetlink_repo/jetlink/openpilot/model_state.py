@@ -156,7 +156,8 @@ class JetlinkModelState:
 
     self.client = client
     self.spec = spec
-    on_cable = getattr(self.client.t, 'on_the_cable', None)
+    transport = getattr(self.client, 't', None)
+    on_cable = getattr(transport, 'on_the_cable', None)
     self._wifi = callable(on_cable) and not on_cable()
     # not chestnut hardware, but the same role: modelV2.big, the UI and the
     # model manager key off this flag
