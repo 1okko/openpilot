@@ -60,6 +60,10 @@ HOLD_WINDOW = 10.0
 # wheel, where an iPhone's every return was a soft disable within a second
 # (2026-10-04)
 PROVING_FRAMES = 20
+# Wi-Fi adds scheduling and radio jitter to every reply. A few late
+# frames during warm-up are not a host that cannot keep up, unlike the
+# low-latency USB link this proving rule was written for.
+WIFI_PROVING_HOLDS = 3
 # the first of them never hand back, held or not: the first after a join
 # carries the history reset, and a Mac's is ~100 ms of CoreML warm-up. A
 # single slow frame later is the comma's own stall, a warp or a send, which
@@ -152,6 +156,8 @@ class JetlinkModelState:
 
     self.client = client
     self.spec = spec
+    on_cable = getattr(self.client.t, 'on_the_cable', None)
+    self._wifi = callable(on_cable) and not on_cable()
     # not chestnut hardware, but the same role: modelV2.big, the UI and the
     # model manager key off this flag
     self.chestnut = True
@@ -340,6 +346,8 @@ class JetlinkModelState:
     if self._frame_id <= SETTLING_FRAMES:
       return None
     if self._frame_id <= PROVING_FRAMES:
+      if self._wifi and len(self._holds) <= WIFI_PROVING_HOLDS:
+        return None
       return f'held frame {self._frame_id} of the first {PROVING_FRAMES}'
     if self._holds_in_a_row >= HOLDS_IN_A_ROW:
       return f'held {self._holds_in_a_row} frames in a row'
