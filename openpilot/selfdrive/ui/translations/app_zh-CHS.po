@@ -2907,3 +2907,87 @@ msgstr "提示音"
 #: openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
 msgid "Play engage, disengage, and warning beeps using the hardware beeper."
 msgstr "使用硬件蜂鸣器播放接管、退出和警告提示音。"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Bluetooth"
+msgstr "蓝牙"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Pair phones, speakers, and controllers with your device over Bluetooth."
+msgstr "通过蓝牙连接手机、音箱和游戏手柄。"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Look for nearby Bluetooth devices. Keep the device offroad while pairing."
+msgstr "搜索附近的蓝牙设备，配对时请保持车辆处于停车状态。"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Find Devices"
+msgstr "搜索设备"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "SCAN"
+msgstr "扫描"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "STOP"
+msgstr "停止"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Status"
+msgstr "状态"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "On"
+msgstr "已开启"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Starting..."
+msgstr "启动中…"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "scanning"
+msgstr "扫描中"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "working..."
+msgstr "处理中…"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Connected"
+msgstr "已连接"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Audio"
+msgstr "音频"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Controller"
+msgstr "手柄"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "DISCONNECT"
+msgstr "断开"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "FORGET"
+msgstr "忽略"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Pairing Request"
+msgstr "配对请求"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "ACCEPT"
+msgstr "接受"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "DECLINE"
+msgstr "拒绝"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Bluetooth device"
+msgstr "蓝牙设备"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Audio output"
+msgstr "音频输出"

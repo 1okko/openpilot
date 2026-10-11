@@ -871,3 +871,87 @@ msgstr "✓ 已訂閱"
 msgid "🔥 Firehose Mode 🔥"
 msgstr "🔥 Firehose 模式 🔥"
 
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Bluetooth"
+msgstr "藍牙"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Pair phones, speakers, and controllers with your device over Bluetooth."
+msgstr "透過藍牙連接手機、喇叭與遊戲手把。"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Look for nearby Bluetooth devices. Keep the device offroad while pairing."
+msgstr "搜尋附近的藍牙裝置，配對時請保持車輛處於停車狀態。"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Find Devices"
+msgstr "搜尋裝置"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "SCAN"
+msgstr "掃描"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "STOP"
+msgstr "停止"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Status"
+msgstr "狀態"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "On"
+msgstr "已開啟"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Starting..."
+msgstr "啟動中…"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "scanning"
+msgstr "掃描中"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "working..."
+msgstr "處理中…"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Connected"
+msgstr "已連接"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Audio"
+msgstr "音訊"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Controller"
+msgstr "手把"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "DISCONNECT"
+msgstr "中斷連接"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "FORGET"
+msgstr "忽略"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Pairing Request"
+msgstr "配對請求"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "ACCEPT"
+msgstr "接受"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "DECLINE"
+msgstr "拒絕"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Bluetooth device"
+msgstr "藍牙裝置"
+
+#: openpilot/selfdrive/ui/layouts/settings/bluetooth.py
+msgid "Audio output"
+msgstr "音訊輸出"

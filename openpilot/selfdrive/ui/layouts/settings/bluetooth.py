@@ -187,5 +187,5 @@ class BluetoothLayout(Widget):
     elif status.error:
       parts.append(status.error)
     elif status.selected_audio:
-      parts.append(tr("audio: ") + status.selected_audio)
+      parts.append(f"{tr('Audio output')}: {status.selected_audio}")
     return "  ".join(parts)
