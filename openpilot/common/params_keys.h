@@ -310,4 +310,11 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"TorqueParamsOverrideEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"TorqueParamsOverrideFriction", {PERSISTENT | BACKUP, FLOAT, "0.1"}},
     {"TorqueParamsOverrideLatAccelFactor", {PERSISTENT | BACKUP, FLOAT, "2.5"}},
+
+    // Bluetooth (ported from StarPilot)
+    {"BluetoothAudioAddress", {PERSISTENT, STRING}},
+    {"BluetoothAudioTestActive", {CLEAR_ON_MANAGER_START | DONT_LOG, BOOL}},
+    {"BluetoothDisconnectControllersOffroad", {PERSISTENT, BOOL, "0"}},
+    {"BluetoothEnabled", {PERSISTENT, BOOL, "0"}},
+    {"TestAlert", {CLEAR_ON_MANAGER_START, STRING, "", ""}},
 };
