@@ -316,5 +316,5 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"BluetoothAudioTestActive", {CLEAR_ON_MANAGER_START | DONT_LOG, BOOL}},
     {"BluetoothDisconnectControllersOffroad", {PERSISTENT, BOOL, "0"}},
     {"BluetoothEnabled", {PERSISTENT, BOOL, "0"}},
-    {"TestAlert", {CLEAR_ON_MANAGER_START, STRING, "", ""}},
+    {"TestAlert", {CLEAR_ON_MANAGER_START, STRING, ""}},
 };
