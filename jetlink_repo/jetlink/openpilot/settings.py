@@ -25,6 +25,8 @@ The standard library only: the owner imports this module.
 from __future__ import annotations
 
 import os
+import socket
+import struct
 from pathlib import Path
 
 from jetlink.openpilot.interface import MODES, Keys
@@ -100,9 +102,25 @@ class Settings:
     return bool(key) and self.params.get_bool(key) is True
 
   def host(self) -> str:
-    """The "host:port" to dial instead of listening, or '' for the cable."""
+    """The "host:port" to dial instead of listening, or '' for the cable.
+
+    TCP mode defaults to the phone hotspot's gateway when no explicit address
+    was written: the Android app usually listens on the phone that runs the
+    hotspot.
+    """
     key = self.keys.host
-    return self.params.get_text(key) if key else ''
+    configured = self.params.get_text(key) if key else ''
+    if configured or self.mode() != 'tcp':
+      return configured
+    try:
+      with open('/proc/net/route') as routes:
+        for line in routes:
+          fields = line.split()
+          if len(fields) >= 4 and fields[1] == '00000000' and int(fields[3], 16) & 0x2:
+            return socket.inet_ntoa(struct.pack('<L', int(fields[2], 16))) + ':5599'
+    except (OSError, ValueError):
+      pass
+    return ''
 
   def marks(self) -> dict[str, int]:
     """When each watched param last changed, by key; 0 for one that is unset."""
