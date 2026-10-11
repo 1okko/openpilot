@@ -1,6 +1,11 @@
+import os
 import threading
 import time
 import uuid
+
+# This AGNOS image has no /var/run symlink, while jeepney defaults to
+# unix:path=/var/run/dbus/system_bus_socket. Point it at the real socket.
+os.environ.setdefault("DBUS_SYSTEM_BUS_ADDRESS", "unix:path=/run/dbus/system_bus_socket")
 
 from typing import Any
 
