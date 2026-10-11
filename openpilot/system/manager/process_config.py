@@ -28,6 +28,9 @@ def notcar(started: bool, params: Params, CP: car.CarParams) -> bool:
 def iscar(started: bool, params: Params, CP: car.CarParams) -> bool:
   return started and not CP.notCar
 
+def bluetooth_enabled(started: bool, params: Params, CP: car.CarParams) -> bool:
+  return params.get_bool("BluetoothEnabled")
+
 def logging(started: bool, params: Params, CP: car.CarParams) -> bool:
   run = (not CP.notCar) or not params.get_bool("DisableLogging")
   return started and run
@@ -198,6 +201,7 @@ procs = [
   PythonProcess("updated", "openpilot.system.updated.updated", always_run, enabled=not PC),
   PythonProcess("uploader", "openpilot.system.loggerd.uploader", uploader_ready),
   PythonProcess("statsd", "openpilot.sunnypilot.system.statsd", always_run),
+  PythonProcess("bluetooth_managerd", "openpilot.starpilot.system.bluetooth.daemon", bluetooth_enabled, enabled=COMMA_HARDWARE),
 
   # debug procs
   NativeProcess("bridge", "openpilot/cereal/messaging", ["./bridge"], notcar),
