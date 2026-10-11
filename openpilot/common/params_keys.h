@@ -150,6 +150,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     // jetlink backend. JetlinkSpec carries whether the engine is built, which must
     // survive a reboot, or every ignition cycle would rebuild a multi-minute engine.
     {"JetlinkLink", {PERSISTENT | BACKUP, INT, "0"}},
+{"JetlinkHost", {PERSISTENT | BACKUP, STRING, ""}},
     {"JetlinkSpec", {PERSISTENT, JSON}},
     {"JetlinkModelPointers", {PERSISTENT, JSON}},
     // an iPhone on a direct cable charges from the comma; off by default, some

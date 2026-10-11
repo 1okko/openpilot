@@ -61,6 +61,11 @@ class FileParams:
     except (TypeError, ValueError):
       return None
 
+  def get_text(self, key: str) -> str:
+    """A STRING param as text, stripped. Empty when it is unset."""
+    value = self.raw(key)
+    return value.decode('utf-8', 'replace').strip() if value else ''
+
 
 class Settings:
   """What jetlink reads of openpilot's params without the Params library."""
@@ -93,6 +98,11 @@ class Settings:
     the param is unset or the fork declares none."""
     key = self.keys.charge_phone
     return bool(key) and self.params.get_bool(key) is True
+
+  def host(self) -> str:
+    """The "host:port" to dial instead of listening, or '' for the cable."""
+    key = self.keys.host
+    return self.params.get_text(key) if key else ''
 
   def marks(self) -> dict[str, int]:
     """When each watched param last changed, by key; 0 for one that is unset."""

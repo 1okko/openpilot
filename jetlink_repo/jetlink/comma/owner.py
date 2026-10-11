@@ -225,9 +225,9 @@ class Owner:
     # this owner's entry in gadget.STARTS, until a stop that was asked for takes it back
     self.born: float | None = None
     self.port = port.Port(chestnut_ids)
-    self.cable = lending.CableListener()
+    self.cable = lending.CableListener(dial=self.settings.host)
     self.lender = lending.Lender(self.lendable, self.bounce_gadget, cable=self.cable_mode, vacate=self.cable.vacate,
-                                 server=self.note_server)
+                                 server=self.note_server, dial=self.settings.host)
 
   # -- the gadget -----------------------------------------------------------
 

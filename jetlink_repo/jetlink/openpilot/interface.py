@@ -54,6 +54,9 @@ class Keys:
   # BOOL: an iPhone on a direct cable is asked to charge from the comma
   # (comma.port). Off when unset, and without the key
   charge_phone: str | None = None
+  # STRING: "host:port" the comma dials instead of listening for the phone's
+  # dial (WiFi). Empty or unset keeps the cable behaviour
+  host: str | None = None
 
 
 @dataclass(frozen=True)

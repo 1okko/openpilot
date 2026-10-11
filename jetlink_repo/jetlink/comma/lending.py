@@ -105,6 +105,8 @@ class Loan:
     # a phone is the host: the link is its dial, taken by accept, and the
     # endpoint files are left alone. The owner's answer says (_take)
     self.cable = False
+    # the host:port to dial, when the lending said so (WiFi)
+    self.dial = ''
     # the cable listener, bound on the first accept and kept for the loan
     self._srv: socket.socket | None = None
     self.bound: tuple | None = None
@@ -177,6 +179,17 @@ class Loan:
     """
     if not self.cable:
       raise RuntimeError('this loan is the endpoint files, not the cable')
+    if self.dial:
+      # WiFi: dial the phone rather than wait for it to dial us
+      host, _, port = self.dial.partition(':')
+      deadline = time.monotonic() + timeout
+      while True:
+        try:
+          return socket.create_connection((host, int(port or 5599)), timeout=min(5.0, max(0.5, timeout)))
+        except OSError as e:
+          if time.monotonic() >= deadline:
+            raise TimeoutError(f'could not dial {self.dial} in {timeout:.0f} s ({e})') from e
+          time.sleep(RETRY)
     deadline = time.monotonic() + timeout
     while self._srv is None:
       try:
@@ -210,6 +223,7 @@ class Loan:
       return None
     self.mount, self.udc = str(reply['mount']), str(reply['udc'])
     self.cable = bool(reply.get('cable'))
+    self.dial = str(reply.get('dial') or '')
     return reply
 
   def close(self) -> None:
@@ -272,6 +286,22 @@ def _what_was_lent(reply: dict) -> str:
 # line twice a second
 CABLE_BIND_BACKOFF = 5.0
 
+# WiFi: the phone's app can listen (its developer setting) but cannot dial,
+# so the comma dials it. The fork's JetlinkHost setting says where; the file
+# is the fallback for a fork that declares none, and either is optional: no
+# host keeps the cable's listen-for-the-phone behaviour
+DIAL_FILE = Path('/data/jetlink-dial')
+
+
+def dial_target(host: str = '') -> str:
+  """The "host:port" to dial, from the setting or the file. '' = cable."""
+  if host:
+    return host.strip()
+  try:
+    return DIAL_FILE.read_text().strip()
+  except OSError:
+    return ''
+
 
 def _listen() -> socket.socket:
   """A listener on CABLE_ADDR, non-blocking, or OSError: the address is
@@ -312,7 +342,8 @@ class CableListener:
   listens for the phone itself.
   """
 
-  def __init__(self):
+  def __init__(self, dial=None):
+    self._dial = dial or (lambda: '')
     self._srv: socket.socket | None = None
     self._sock: socket.socket | None = None
     self.peer: str | None = None
@@ -340,6 +371,9 @@ class CableListener:
     not exist yet, and the owner's loop must carry on without it."""
     if self._srv is not None:
       return True
+    if dial_target(self._dial()):
+      # a WiFi host: the borrower dials it, so nothing listens here
+      return False
     now = time.monotonic()
     if now < self.next_open:
       return False
@@ -466,7 +500,9 @@ class Lender:
 
   def __init__(self, lendable: Callable[[], bool], bounce: Callable[[], bool],
                path: Path | None = None, cable: Callable[[], bool] | None = None,
-               vacate: Callable[[], None] | None = None, server: Callable[[str, dict], None] | None = None):
+               vacate: Callable[[], None] | None = None, server: Callable[[str, dict], None] | None = None,
+               dial: Callable[[], str] | None = None):
+    self._dial = dial or (lambda: '')
     self._lendable = lendable
     self._bounce = bounce
     self._cable = cable or (lambda: False)
@@ -599,7 +635,8 @@ class Lender:
         # port is free when this answer lands. The endpoint files stay put
         self._vacate()
         self._tell('cable', "jetlink: lending the cable link to %s", self.borrower)
-        _send(conn, {'ok': True, 'cable': True, 'udc': gadget.bound_udc() or '', 'mount': str(gadget.FFS_MOUNT)})
+        _send(conn, {'ok': True, 'cable': True, 'dial': dial_target(self._dial()),
+                     'udc': gadget.bound_udc() or '', 'mount': str(gadget.FFS_MOUNT)})
         return
       udc = gadget.bound_udc()
       if not (udc and self._lendable()):
