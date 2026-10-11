@@ -104,13 +104,15 @@ class Settings:
   def host(self) -> str:
     """The "host:port" to dial instead of listening, or '' for the cable.
 
-    TCP mode defaults to the phone hotspot's gateway when no explicit address
-    was written: the Android app usually listens on the phone that runs the
-    hotspot.
+    Only TCP mode uses this. An old host must not override USB or iOS mode,
+    and TCP mode defaults to the phone hotspot's gateway when no explicit
+    address was written.
     """
     key = self.keys.host
+    if self.mode() != 'tcp':
+      return ''
     configured = self.params.get_text(key) if key else ''
-    if configured or self.mode() != 'tcp':
+    if configured:
       return configured
     try:
       with open('/proc/net/route') as routes:
