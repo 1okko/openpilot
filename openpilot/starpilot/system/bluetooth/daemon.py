@@ -9,7 +9,7 @@ from typing import Any
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from openpilot.starpilot.system.bluetooth.bluez import BlueZClient
-from openpilot.starpilot.system.bluetooth.protocol import BLUETOOTH_SOCKET_PATH
+from openpilot.starpilot.system.bluetooth.protocol import BLUETOOTH_SOCKET_PATH, param_text
 from openpilot.starpilot.system.bluetooth.radio import BluetoothRadio
 
 
@@ -28,7 +28,7 @@ class BluetoothController:
   def __init__(self, params: Params | None = None, bluez_factory=BlueZClient, radio: BluetoothRadio | None = None,
                params_memory: Params | None = None, sleep=time.sleep):
     self.params = params or Params()
-    self.params_memory = params_memory or Params(memory=True)
+    self.params_memory = params_memory or Params()
     self._bluez_factory = bluez_factory
     self._radio = radio or BluetoothRadio()
     self._lock = threading.RLock()
@@ -104,7 +104,7 @@ class BluetoothController:
         "powered": False,
         "discovering": False,
         "offroad": self._offroad(),
-        "selected_audio": self.params.get("BluetoothAudioAddress", encoding="utf-8") or "",
+        "selected_audio": param_text(self.params, "BluetoothAudioAddress") or "",
         "devices": [],
         "prompt": None,
         "error": self._pairing_error,
@@ -135,7 +135,7 @@ class BluetoothController:
     try:
       self._client().pair(address)
       status = self._client().device_for_address(address)
-      if status.get("audio") and not self.params.get("BluetoothAudioAddress", encoding="utf-8"):
+      if status.get("audio") and not param_text(self.params, "BluetoothAudioAddress"):
         self.params.put("BluetoothAudioAddress", address)
       self._pairing_error = ""
     except Exception as error:
@@ -152,7 +152,7 @@ class BluetoothController:
     try:
       self._sleep(max(0.0, deadline - time.monotonic()))
       if (not self._offroad() or not self.params.get_bool("BluetoothEnabled") or
-          (self.params.get("BluetoothAudioAddress", encoding="utf-8") or "").upper() != address.upper()):
+          (param_text(self.params, "BluetoothAudioAddress") or "").upper() != address.upper()):
         return
       device = self._client().device_for_address(address)
       if not device.get("connected"):
@@ -243,7 +243,7 @@ class BluetoothController:
       self._manual_disconnect_until.pop(address.upper(), None)
       self._policy_disconnected.discard(address.upper())
       self._policy_disconnect_retry_after.pop(address.upper(), None)
-      if (self.params.get("BluetoothAudioAddress", encoding="utf-8") or "").upper() == address.upper():
+      if (param_text(self.params, "BluetoothAudioAddress") or "").upper() == address.upper():
         self.params.remove("BluetoothAudioAddress")
     elif command == "select_audio":
       if address:

@@ -11,6 +11,13 @@ from typing import Any
 from openpilot.common.params import Params
 
 
+def param_text(params: Params, key: str) -> str:
+  value = params.get(key)
+  if isinstance(value, bytes):
+    value = value.decode("utf-8", errors="ignore")
+  return "" if value is None else str(value)
+
+
 BLUETOOTH_SOCKET_PATH = "/tmp/starpilot-bluetooth.sock"
 BLUETOOTH_RADIO_HELPER = "/usr/comma/bluetooth-radio"
 A2DP_SINK_UUID = "0000110b-0000-1000-8000-00805f9b34fb"
@@ -248,7 +255,7 @@ class BluetoothClient:
         available=Path(BLUETOOTH_RADIO_HELPER).is_file(),
         enabled=params.get_bool("BluetoothEnabled"),
         offroad=params.get_bool("IsOffroad"),
-        selected_audio=params.get("BluetoothAudioAddress", encoding="utf-8") or "",
+        selected_audio=param_text(params, "BluetoothAudioAddress"),
       )
     return BluetoothStatus.from_dict(self.call("status").get("status", {}))
 

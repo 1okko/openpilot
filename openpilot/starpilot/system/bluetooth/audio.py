@@ -49,9 +49,10 @@ class BluetoothAudioSink:
   def desired_address(self) -> str:
     if not self.params.get_bool("BluetoothEnabled"):
       return ""
-    address = (self.params.get("BluetoothAudioAddress", encoding="utf-8") or "").strip().upper()
+    address = self.params.get("BluetoothAudioAddress")
     if isinstance(address, bytes):
       address = address.decode("utf-8", errors="ignore")
+    address = (address or "").strip().upper()
     return address if ADDRESS_RE.fullmatch(address) else ""
 
   @staticmethod
