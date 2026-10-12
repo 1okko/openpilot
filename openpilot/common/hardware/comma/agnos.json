@@ -68,12 +68,12 @@
   {
     "full_check": false,
     "has_ab": true,
-    "hash": "9751bbce8ad090b3834c977f45416c1a93382996f20d5d9525b725403086e737",
-    "hash_raw": "e7630662baa5024938e301f15104cc54e27920784099649916b7ac5d721011c2",
+    "hash": "27506eced990d5b0860462fa607b43accc2a0f657bf9a878fcedd55c000f5df2",
+    "hash_raw": "d40e89e165194c6439338a3b207de19830e8518ccfb75399a07376c7260ad636",
     "name": "system",
-    "ondevice_hash": "e7630662baa5024938e301f15104cc54e27920784099649916b7ac5d721011c2",
+    "ondevice_hash": "d40e89e165194c6439338a3b207de19830e8518ccfb75399a07376c7260ad636",
     "size": 4718592000,
     "sparse": true,
-    "url": "https://pub-c2f6aecf8ae1480090fc1e130c185fa2.r2.dev/system-9751bbce8ad090b3834c977f45416c1a93382996f20d5d9525b725403086e737.img.xz"
+    "url": "https://pub-c2f6aecf8ae1480090fc1e130c185fa2.r2.dev/system-27506eced990d5b0860462fa607b43accc2a0f657bf9a878fcedd55c000f5df2.img.xz"
   }
 ]
